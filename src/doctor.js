@@ -4,7 +4,7 @@
  * 覆盖从磁盘到游戏的整条链路：exe → 端口 7842 → mod 响应 → 存档就绪 → mod 文件与日志。
  * 只读，不做任何修复动作；修法写进输出，由模型转述或自行执行。
  *
- * @module junimo-dsh/doctor
+ * @module dsh-junimo/doctor
  */
 
 import { existsSync, readFileSync } from 'node:fs'

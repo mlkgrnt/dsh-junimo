@@ -1,5 +1,5 @@
 /**
- * junimo-dsh 插件入口。
+ * dsh-junimo 插件入口。
  *
  * 它本身不实现任何游戏逻辑——37 个工具全部来自 junimo-mcp.exe，由
  * `@deepseek-ai/dsh-mcp-client` 桥接成 `mcp__junimo__*`。本插件负责三件
@@ -9,7 +9,7 @@
  *   2. 往系统提示词注入「星露谷操作纪律」，防止模型重踩时序与存档的坑
  *   3. 注册 4 个原生工具：doctor、聚焦、启动、进档（mod 在游戏内，够不到这些）
  *
- * @module junimo-dsh
+ * @module dsh-junimo
  */
 
 import { defineTool } from '@deepseek-ai/dsh-tools'

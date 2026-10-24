@@ -5,7 +5,7 @@
  * 没法自己算包内相对路径。把这件事集中在插件里，patch 只写
  * `ctx.junimoPaths.exe` / `ctx.junimoPaths.skillDir` 即可。
  *
- * @module junimo-dsh/paths
+ * @module dsh-junimo/paths
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'

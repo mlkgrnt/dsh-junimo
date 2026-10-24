@@ -1,4 +1,4 @@
-# junimo-dsh
+# dsh-junimo
 
 把 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的 **37 个星露谷工具**接进 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)，并补上 dsh 侧才做得了的三件事：部署自检、游戏生命周期、提示词纪律。
 
@@ -8,10 +8,9 @@
 
 ```
 模型 ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-mcp.exe ──HTTP──▶ NagiBridge mod ──▶ 游戏
-        ▲                                              ▲
-        │                                              │
-   junimo-dsh 补的 4 个原生工具                  不改动，直接复用
-   （doctor / focus / launch / load_save）
+                              ▲                          ▲
+                        dsh-junimo 装配             原样复用，不改一行
+                        + 4 个原生工具
 ```
 
 | 层 | 提供方 | 作用 |
@@ -42,10 +41,10 @@ curl -L -o junimo-mcp.exe https://github.com/mlkgrnt/Junimo-MCP/releases/latest/
 
 ```bash
 # 本地 checkout（开发）
-dsh plugin --profile web add link:/path/to/junimo-dsh
+dsh plugin --profile web add link:/path/to/dsh-junimo
 
 # 或从 GitHub（需要 pnpm 允许 prepare；本包不需要 prepare，纯 ESM 源码直出）
-dsh plugin --profile web add github:mlkgrnt/junimo-dsh
+dsh plugin --profile web add github:mlkgrnt/dsh-junimo
 ```
 
 第一次 `dsh plugin add` 会初始化 profile 并在 `dsh.profile.bundles` 里追加本包。重启 dsh 后生效。
@@ -108,7 +107,7 @@ node test/smoke.mjs     # 离线冒烟：不需要游戏、不需要 dsh 宿主
 装进 dsh 验证：
 
 ```bash
-dsh plugin --profile <name> add link:/path/to/junimo-dsh
+dsh plugin --profile <name> add link:/path/to/dsh-junimo
 dsh --profile <name> --dump-config | grep -A8 junimo    # 确认三层都进来了
 dsh --profile <name> --no-open                          # 启动，看有没有 "entries did not activate"
 ```

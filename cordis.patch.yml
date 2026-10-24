@@ -1,4 +1,4 @@
-# junimo-dsh bundle patch —— 把星露谷能力装进任意 dsh profile。
+# dsh-junimo bundle patch —— 把星露谷能力装进任意 dsh profile。
 #
 # 三层，各管一件事：
 #   1. junimo-mcp   : 官方 mcp-client 桥接 junimo-mcp.exe，工具以 mcp__junimo__* 出现
@@ -30,7 +30,7 @@
         failOnStartupError: false
 
     - id: junimo
-      name: 'junimo-dsh'
+      name: 'dsh-junimo'
 
     - id: junimo-skills
       name: '@deepseek-ai/dsh-skill-filesystem'

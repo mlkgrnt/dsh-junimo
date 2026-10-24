@@ -10,7 +10,7 @@
  * 会静默吞掉点击。所以策略是「先等够 → 点 → 用 worldReady 判定 → 整轮重试」，
  * 而不是靠猜时间点。
  *
- * @module junimo-dsh/game
+ * @module dsh-junimo/game
  */
 
 import { spawn } from 'node:child_process'

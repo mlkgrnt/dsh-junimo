@@ -1,4 +1,4 @@
-# 星露谷操作参考（junimo-dsh）
+# 星露谷操作参考（dsh-junimo）
 
 > 这份文件是给模型按需读的长文档；常驻提示词里只有压缩过的纪律。
 > 工具本体来自 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP)（OCaml 单 exe，37 个意图工具），

@@ -1,5 +1,5 @@
 {
-  "name": "junimo-dsh",
+  "name": "dsh-junimo",
   "version": "0.1.0",
   "description": "DeepSeek Harness 插件：把 Junimo-MCP 的 37 个星露谷工具接进 dsh，并补上部署自检、游戏生命周期与提示词纪律",
   "type": "module",
@@ -27,7 +27,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mlkgrnt/junimo-dsh.git"
+    "url": "git+https://github.com/mlkgrnt/dsh-junimo.git"
   },
   "dsh": {
     "engines": {

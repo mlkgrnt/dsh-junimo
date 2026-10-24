@@ -4,7 +4,7 @@
  * 游戏语义一律不在这里实现——那些在 junimo-mcp.exe 里，本层只做「探活」和
  * 「点两下鼠标」这种 MCP 工具够不到的事。
  *
- * @module junimo-dsh/api
+ * @module dsh-junimo/api
  */
 
 /**
