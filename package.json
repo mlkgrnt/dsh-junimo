@@ -1,0 +1,53 @@
+{
+  "name": "junimo-dsh",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 插件：把 Junimo-MCP 的 37 个星露谷工具接进 dsh，并补上部署自检、游戏生命周期与提示词纪律",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "cordis.patch.yml",
+    "reference/",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "stardew-valley",
+    "mcp",
+    "cordis"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mlkgrnt/junimo-dsh.git"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.1-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "smoke": "node test/smoke.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-system-prompt": "*",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-system-prompt": {
+      "optional": true
+    }
+  }
+}
