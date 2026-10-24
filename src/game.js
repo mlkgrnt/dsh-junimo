@@ -15,10 +15,22 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 import { apiGet, apiPost } from './api.js'
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+/**
+ * powershell.exe 的绝对路径。
+ *
+ * 不能只写 'powershell.exe'：宿主进程的 PATH 未必含 System32（Git Bash、
+ * 精简过的环境变量、某些服务里都会缺），实测直接 spawn 会 ENOENT。
+ */
+function powershellPath() {
+  const sysRoot = process.env.SystemRoot ?? process.env.windir ?? 'C:\\Windows'
+  const full = join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+  return existsSync(full) ? full : 'powershell.exe'
+}
 
 /** 只在 Windows 上有意义；其它平台直接给出明确拒绝。 */
 export function requireWindows() {
@@ -28,7 +40,7 @@ export function requireWindows() {
 /** 跑一段 PowerShell 并收集输出；失败不抛，交给调用方渲染。 */
 function runPowerShell(script, timeoutMs = 15000) {
   return new Promise(resolve => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    const child = spawn(powershellPath(), ['-NoProfile', '-NonInteractive', '-Command', script], {
       windowsHide: true,
     })
     let out = ''
@@ -97,9 +109,23 @@ export async function waitForMod(apiUrl, timeoutMs) {
   return { ready: false, worldReady, waitedMs: Date.now() - started }
 }
 
+/** 有没有星露谷相关进程在跑（SMAPI 与游戏本体两个进程名都算）。 */
+async function anyStardewProcess() {
+  const res = await runPowerShell(
+    `$p = Get-Process | Where-Object { $_.ProcessName -like '*Stardew*' }; ` +
+      `if ($p) { Write-Output ($p | ForEach-Object { $_.ProcessName } | Sort-Object -Unique) } else { Write-Output 'NONE' }`,
+    8000,
+  )
+  return !res.out.includes('NONE')
+}
+
 /**
  * 启动游戏。必须是**分离进程**：宿主退出/回收进程树时游戏要能继续活着，
  * 否则用户刚读档就被连坐杀掉。
+ *
+ * 注意：如果宿主本身跑在受限的 Job 对象里（某些 IDE / 沙箱会把子进程收进 job
+ * 并在父进程退出时统一回收），detached 也救不了——这种情况下面会明确报出来，
+ * 让调用方改走「请用户手动启动」。
  */
 export async function launchGame(paths, timeoutMs = 90_000) {
   const blocked = requireWindows()
@@ -127,6 +153,19 @@ export async function launchGame(paths, timeoutMs = 90_000) {
     child.unref()
   } catch (error) {
     return { ok: false, detail: `启动失败：${error instanceof Error ? error.message : String(error)}` }
+  }
+
+  // 等它真正活下来再等端口：被宿主 Job 回收的情况通常 1~2 秒内就没了，
+  // 不校验的话会白等满整个超时，还报成"7842 没响应"，误导排查方向。
+  await sleep(2500)
+  if (!(await anyStardewProcess())) {
+    return {
+      ok: false,
+      detail:
+        '进程启动后立刻消失（不是没装 SMAPI，也不是端口问题）。最常见原因：dsh 宿主跑在受限的 Job 对象里，' +
+        '子进程随宿主会话一起被回收——IDE 托管的终端、部分沙箱环境都会这样。' +
+        '请让用户手动双击 StardewModdingAPI.exe（或在普通终端里启动），然后再跑 junimo_load_save。',
+    }
   }
 
   const waited = await waitForMod(paths.apiUrl, timeoutMs)

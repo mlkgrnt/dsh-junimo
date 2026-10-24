@@ -126,7 +126,8 @@ dsh --profile <name> --no-open                          # 启动，看有没有 
 ## 已知限制
 
 - **仅 Windows**：聚焦/启动/进档依赖 PowerShell 与 user32；非 Windows 会明确报错而不是静默失败。
-- **进档坐标绑定 1280×720**：其它窗口分辨率需要换算（见 `src/game.js` 的注释）。
+- **进档坐标绑定 1280×720 标题界面**（已在窗口模式真机验证）；其它分辨率需要换算，见 `src/game.js` 注释。
+- **`junimo_game_launch` 在某些宿主流下可能被回收**：如果 dsh 本身跑在受限的 Job 对象里（IDE 托管的终端、部分沙箱），子进程会随宿主会话一起消失。插件会在 2.5 秒后探测进程是否存活并**如实报出**，这时让用户手动双击 `StardewModdingAPI.exe` 即可，后续 `junimo_load_save` 照常可用。
 - **剧情里的问题框选不了**：mod 侧把提问者推断成「玩家面前一格的角色」，宠物领养这类事件全场没 NPC ⇒ 答案被游戏静默丢弃。这是上游 mod 的缺陷，本插件不掩盖它。
 - 内置的 `junimo-mcp.exe` 是 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的发布产物（MIT），版本见 `bin/BUNDLED_VERSION`；本插件不打包 NagiBridge-Remix（PolyForm Noncommercial，需自行安装）。
 
