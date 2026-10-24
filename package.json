@@ -11,9 +11,11 @@
   },
   "files": [
     "src/",
+    "bin/",
     "cordis.patch.yml",
     "reference/",
     "skills/",
+    "scripts/",
     "README.md",
     "LICENSE"
   ],

@@ -50,7 +50,13 @@ export async function runDoctor(paths) {
 
   // 1. 二进制
   if (paths.exeExists) {
-    checks.push({ verdict: 'ok', title: 'junimo-mcp.exe', detail: paths.exe })
+    const origin =
+      paths.exeSource === 'bundled'
+        ? `随包内置${paths.exeVersion ? ` ${paths.exeVersion}` : ''}`
+        : paths.exeSource === 'env'
+          ? '来自环境变量 JUNIMO_MCP_BIN'
+          : '本机其它副本'
+    checks.push({ verdict: 'ok', title: 'junimo-mcp.exe', detail: `${paths.exe}\n   来源：${origin}` })
   } else {
     checks.push({
       verdict: 'fail',

@@ -58,7 +58,7 @@ function guessGameDirs() {
   return dirs
 }
 
-/** exe 的候选位置：环境变量优先，其次随包 bin/，最后是本机常见开发副本。 */
+/** exe 的候选位置：环境变量优先，其次**随包内置**，最后是本机其它副本。 */
 function exeCandidates() {
   return [
     process.env.JUNIMO_MCP_BIN,
@@ -67,6 +67,22 @@ function exeCandidates() {
     'E:\\junimo-mcp\\release\\v3\\junimo-mcp.exe',
     'E:\\junimo-mcp\\release\\junimo-mcp.exe',
   ]
+}
+
+/** 随包内置的 exe 版本记号（`bin/BUNDLED_VERSION`）。 */
+function readBundledVersion() {
+  try {
+    return readFileSync(join(packageRoot, 'bin', 'BUNDLED_VERSION'), 'utf8').trim()
+  } catch {
+    return undefined
+  }
+}
+
+/** 命中的 exe 是从哪来的：环境变量 / 随包 / 本机其它位置。 */
+function sourceOf(exe) {
+  if (process.env.JUNIMO_MCP_BIN && exe === process.env.JUNIMO_MCP_BIN) return 'env'
+  if (exe === join(packageRoot, 'bin', 'junimo-mcp.exe')) return 'bundled'
+  return 'external'
 }
 
 /** 兼容 `release/vN/` 这种带版本子目录的开发副本：取 N 最大的一个。 */
@@ -97,10 +113,13 @@ export function resolvePaths() {
   const exeProbe = firstExisting([...exeCandidates(), newestReleaseExe()])
   const gameProbe = firstExisting(guessGameDirs())
   const gameDir = gameProbe.hit
+  const exe = exeProbe.hit ?? exeProbe.list[0] ?? join(packageRoot, 'bin', 'junimo-mcp.exe')
 
   return {
-    exe: exeProbe.hit ?? exeProbe.list[0] ?? join(packageRoot, 'bin', 'junimo-mcp.exe'),
+    exe,
     exeExists: exeProbe.hit !== undefined,
+    exeSource: sourceOf(exe),
+    exeVersion: readBundledVersion(),
     exeCandidates: exeProbe.list,
     packageRoot,
     skillDir: join(packageRoot, 'skills'),
