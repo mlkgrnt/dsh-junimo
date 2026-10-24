@@ -120,12 +120,50 @@ async function anyStardewProcess() {
 }
 
 /**
+ * 找一个 POSIX shell（Git Bash / WSL 的 bash），找不到返回 null。
+ */
+export function findPosixShell() {
+  const pf = process.env.ProgramFiles ?? 'C:\\Program Files'
+  const pf86 = process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)'
+  const candidates = [
+    join(pf, 'Git', 'bin', 'bash.exe'),
+    join(pf86, 'Git', 'bin', 'bash.exe'),
+    join(pf, 'Git', 'usr', 'bin', 'bash.exe'),
+    'C:\\Windows\\System32\\bash.exe',
+  ]
+  return candidates.find(p => existsSync(p)) ?? null
+}
+
+/**
+ * 把 Windows 路径包成 shell 里安全的单引号字符串（反斜杠转正斜杠，Git Bash 认）。
+ */
+function quotePosix(p) {
+  const forward = String(p).split('\\').join('/')
+  return "'" + forward.split("'").join("'\\''") + "'"
+}
+
+/**
+ * bash 用的启动命令（导出以便离线单测）。
+ */
+export function shellLaunchCommand(gameDir) {
+  return 'cd ' + quotePosix(gameDir) + ' && exec ./StardewModdingAPI.exe'
+}
+
+/**
  * 启动游戏。必须是**分离进程**：宿主退出/回收进程树时游戏要能继续活着，
  * 否则用户刚读档就被连坐杀掉。
  *
- * 注意：如果宿主本身跑在受限的 Job 对象里（某些 IDE / 沙箱会把子进程收进 job
- * 并在父进程退出时统一回收），detached 也救不了——这种情况下面会明确报出来，
- * 让调用方改走「请用户手动启动」。
+ * ⚠️ 关键：SMAPI 是**控制台程序**，直接 spawn 它会秒退。2026-10-25 在本机做过对照
+ * 实验（同一台机器、同一时刻，每次先杀干净再试，4~8 秒后看进程还在不在）：
+ *
+ *   spawn(exe, { detached, stdio: ignore, windowsHide: false })          → 死
+ *   spawn(exe, { detached, stdio: ignore, windowsHide: true  })          → 死
+ *   spawn(exe, { detached, stdio: [ignore, pipe, pipe] })                → 死
+ *   spawn(bash, ['-lc', 切入游戏目录并 exec ./StardewModdingAPI.exe])   → 活，且**不出现控制台窗**
+ *   spawn(带引号的 exe 路径, { shell: true })                            → 活，但**会多一个 PseudoConsoleWindow**
+ *
+ * 所以顺序是：**优先 bash**（活且干净），其次 shell:true（活但多一个窗），都不行才报错。
+ * 之前把这现象归因成「dsh 宿主的 Job 对象回收子进程」是误判——同一个 Job 里 bash 明明活得好好的。
  */
 export async function launchGame(paths, timeoutMs = 90_000) {
   const blocked = requireWindows()
@@ -143,14 +181,28 @@ export async function launchGame(paths, timeoutMs = 90_000) {
     }
   }
 
+  let via
   try {
-    const child = spawn(paths.smapiPath, [], {
-      cwd: dirname(paths.smapiPath),
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: false,
-    })
-    child.unref()
+    const shell = findPosixShell()
+    if (shell) {
+      // 首选：经 bash。SMAPI 复用 bash 的控制台，既起得来又不会多一个窗口。
+      via = 'bash'
+      spawn(shell, ['-lc', shellLaunchCommand(paths.gameDir)], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      }).unref()
+    } else {
+      // 兜底：经 cmd 一层（shell: true）。起得来，但会多一个 SMAPI 控制台窗。
+      via = 'shell'
+      spawn('"' + paths.smapiPath + '"', [], {
+        cwd: dirname(paths.smapiPath),
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+        shell: true,
+      }).unref()
+    }
   } catch (error) {
     return { ok: false, detail: `启动失败：${error instanceof Error ? error.message : String(error)}` }
   }
@@ -162,9 +214,10 @@ export async function launchGame(paths, timeoutMs = 90_000) {
     return {
       ok: false,
       detail:
-        '进程启动后立刻消失（不是没装 SMAPI，也不是端口问题）。最常见原因：dsh 宿主跑在受限的 Job 对象里，' +
-        '子进程随宿主会话一起被回收——IDE 托管的终端、部分沙箱环境都会这样。' +
-        '请让用户手动双击 StardewModdingAPI.exe（或在普通终端里启动），然后再跑 junimo_load_save。',
+        '进程启动后立刻消失（不是没装 SMAPI，也不是端口问题）。' +
+        'SMAPI 是控制台程序：直接 spawn 且父进程没有可继承的控制台时它会秒退。' +
+        `已尝试经 ${via} 启动；连它都拉不住时，请手动双击 StardewModdingAPI.exe，然后再跑 junimo_load_save。` +
+        (via === 'shell' ? '（本次走的是 cmd 兜底，正常情况下会多一个 SMAPI 控制台窗）' : ''),
     }
   }
 

@@ -7,6 +7,7 @@
 
 import { apply } from '../src/index.js'
 import { resolvePaths } from '../src/paths.js'
+import { findPosixShell, shellLaunchCommand } from '../src/game.js'
 
 const registered = []
 const sections = []
@@ -43,10 +44,22 @@ for (const tool of registered) {
   console.log(`    desc: ${tool.description.slice(0, 60)}…`)
 }
 
+console.log('\n=== 启动命令（SMAPI 是控制台程序，必须经 shell 拉起）===')
+const posixShell = findPosixShell()
+console.log(`  POSIX shell: ${posixShell ?? '(没找到 → 将退回 cmd 兜底，会多一个控制台窗)'}`)
+const launchCmd = shellLaunchCommand('D:\\SteamLibrary\\steamapps\\common\\Stardew Valley')
+console.log(`  启动命令: ${launchCmd}`)
+console.log(`  含撇号的路径: ${shellLaunchCommand("C:\\it's here\\game")}`)
+
 const problems = []
 if (services.get('junimoPaths')?.exe === undefined) problems.push('junimoPaths 服务未提供')
 if (sections.length !== 1) problems.push(`提示词段数量异常: ${sections.length}`)
 if (registered.length !== 4) problems.push(`工具数量异常: ${registered.length}`)
+if (!launchCmd.includes("cd '") || !launchCmd.endsWith('&& exec ./StardewModdingAPI.exe')) {
+  problems.push(`启动命令格式异常: ${launchCmd}`)
+}
+if (launchCmd.includes('\\\\')) problems.push('启动命令里残留反斜杠（Git Bash 只认正斜杠）')
+if (!shellLaunchCommand("C:\\it's here\\game").includes("'\\''")) problems.push('撇号没有被正确转义')
 
 const expected = ['junimo_doctor', 'junimo_focus', 'junimo_game_launch', 'junimo_load_save']
 for (const name of expected) {
