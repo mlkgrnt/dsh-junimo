@@ -1,7 +1,7 @@
 {
   "name": "dsh-junimo",
   "version": "0.1.0",
-  "description": "DeepSeek Harness 插件：把 Junimo-MCP 的 37 个星露谷工具接进 dsh，并补上部署自检、游戏生命周期与提示词纪律",
+  "description": "DeepSeek Harness 插件：为《星露谷物语》提供 37 个操控工具，并补充部署自检与游戏生命周期管理",
   "type": "module",
   "main": "src/index.js",
   "exports": {
