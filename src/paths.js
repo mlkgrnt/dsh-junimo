@@ -29,6 +29,21 @@ export const DEFAULT_API_URL = 'http://localhost:7842'
  */
 export const bundledBinaryUsable = process.platform === 'win32'
 
+/**
+ * 本平台对应的 Junimo-MCP **发布产物**名；没有对应产物时返回 undefined。
+ *
+ * 命名必须与 `.github/workflows/release-binaries.yml` 里的 `asset` 一致——
+ * 那是产物唯一的生产者，这里只是把它翻译成给用户看的下载地址。
+ * 随包的内置二进制仍然只有 Windows（`bin/junimo-mcp.exe`），
+ * 其它平台要用户自己下载后经 JUNIMO_MCP_BIN 指过来。
+ */
+export function platformAssetName(platform = process.platform, arch = process.arch) {
+  if (platform === 'win32') return 'junimo-mcp.exe'
+  if (platform === 'darwin' && arch === 'arm64') return 'junimo-mcp-macos-arm64'
+  if (platform === 'linux' && arch === 'x64') return 'junimo-mcp-linux-x86_64'
+  return undefined
+}
+
 function firstExisting(candidates) {
   const list = candidates.filter(x => typeof x === 'string' && x.length > 0)
   return { hit: list.find(p => existsSync(p)), list }
@@ -136,8 +151,11 @@ export function resolvePaths() {
     exeVersion: readBundledVersion(),
     exeCandidates: exeProbe.list,
     platform: process.platform,
+    arch: process.arch,
     /** 随包二进制在本平台是否可用；false 时 doctor 会给出专门的说明。 */
     platformSupported: bundledBinaryUsable,
+    /** 本平台可下载的发布产物名（undefined = 上游没为该平台出产物）。 */
+    platformAsset: platformAssetName(),
     packageRoot,
     skillDir: join(packageRoot, 'skills'),
     referenceDir: join(packageRoot, 'reference'),

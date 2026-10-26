@@ -66,6 +66,9 @@ if (!shellLaunchCommand("C:\\it's here\\game").includes("'\\''")) problems.push(
 if (typeof paths.platform !== 'string') problems.push('paths.platform 缺失')
 if (typeof paths.platformSupported !== 'boolean') problems.push('paths.platformSupported 缺失')
 if (process.platform !== 'win32' && paths.platformSupported) problems.push('非 Windows 上 platformSupported 不应为 true')
+// platformAsset 与 Junimo-MCP 的发布工作流命名强耦合，写错就等于给用户一个 404 链接。
+if (paths.platformAsset !== undefined && typeof paths.platformAsset !== 'string') problems.push('paths.platformAsset 类型异常')
+if (process.platform === 'win32' && paths.platformAsset !== 'junimo-mcp.exe') problems.push('Windows 的 platformAsset 应为 junimo-mcp.exe')
 
 const expected = ['junimo_doctor', 'junimo_focus', 'junimo_game_launch', 'junimo_load_save']
 for (const name of expected) {

@@ -53,17 +53,23 @@ export async function runDoctor(paths) {
   // 非 Windows 必须单独判，不能落到下面的「找不到 exe」分支：那条提示会让人
   // 去下载 junimo-mcp.exe，而下载下来也执行不了。真正缺的是平台产物，不是文件。
   if (!paths.platformSupported && !paths.exeExists) {
+    const asset = paths.platformAsset
+    const arch = `${paths.platform}/${paths.arch}`
     checks.push({
       verdict: 'fail',
-      title: `本平台暂无可用二进制（${paths.platform}）`,
-      detail:
-        '随包内置的 junimo-mcp.exe 是 Windows PE，在本平台无法执行。\n' +
-        '   内核本身是跨平台的（CI 在 Linux / macOS 上跑通了全部免游戏断言），' +
-        '但目前没有发布非 Windows 产物。',
-      fix:
-        '自己构建：`dune build` 后设 JUNIMO_MCP_BIN 指向 _build/default/bin/main.exe。\n' +
-        '   注意：即使二进制就位，端到端仍不可用——执行器 mod 的 /press_key 与 /click_tile ' +
-        '走 user32 的 keybd_event / mouse_event，非 Windows 无实现。',
+      title: `本平台暂无可用二进制（${arch}）`,
+      detail: asset
+        ? '插件随包只带 Windows 的 junimo-mcp.exe，在本平台无法执行。\n' +
+          `   Junimo-MCP 已发布本平台产物：${asset}`
+        : '插件随包只带 Windows 的 junimo-mcp.exe，在本平台无法执行。\n' +
+          `   Junimo-MCP 尚未发布 ${arch} 的产物。`,
+      fix: asset
+        ? `下载 https://github.com/mlkgrnt/Junimo-MCP/releases/latest/download/${asset}\n` +
+          '   然后设 JUNIMO_MCP_BIN 指向它。\n' +
+          '   注意：即使二进制就位，端到端仍会缺两个端点——mod 的 /press_key 与 /click_tile ' +
+          '走 user32 的 keybd_event / mouse_event，非 Windows 无实现。'
+        : '自行构建：`dune build` 后设 JUNIMO_MCP_BIN 指向 _build/default/bin/main.exe。\n' +
+          '   注意：/press_key 与 /click_tile 走 user32，非 Windows 无实现。',
     })
   } else if (paths.exeExists) {
     const origin =

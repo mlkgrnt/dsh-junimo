@@ -174,15 +174,17 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 
 | 层 | 平台现状 | 依据 |
 |---|---|---|
-| OCaml 内核（`junimo-mcp.exe` 的内容） | **已跨平台** | 依赖只有 `yojson` + `unix`，源码无平台分支；CI 在 Linux / macOS / Windows 三个 runner 上跑通全部免游戏断言 |
+| OCaml 内核（`junimo-mcp.exe` 的内容） | **已跨平台，且已发布 macOS / Linux 产物** | 依赖只有 `yojson` + `unix`，源码无平台分支；CI 在 Linux / macOS / Windows 三个 runner 上跑通全部免游戏断言；产物发布前会在各自平台上再跑一遍 |
 | 本插件（进程启动、窗口聚焦、路径探测） | **仅 Windows** | 聚焦用 user32，启动走 PowerShell 与 bash，Steam 库按盘符探测 |
 | 执行器 mod（NagiBridge-Remix） | **部分仅 Windows** | `/press_key` 与 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有菜单或带 `no_mouse` 时走进程内调用，本身可移植 |
 
-所以**内核层可以直接构建使用**，缺的是两端的平台适配与产物发布。在非 Windows 上运行 `junimo_doctor` 会明确报告「本平台暂无可用二进制」，而不是误报文件已找到。若你自行 `dune build` 过内核，可用 `JUNIMO_MCP_BIN` 指向构建产物——但端到端仍会卡在 mod 的按键与点击上。
+本插件随包只带 Windows 的 `junimo-mcp.exe`。macOS / Linux 用户可以从 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取对应产物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指过来即可使用 37 个工具中的大部分；`junimo_doctor` 在非 Windows 上会直接给出该平台对应的下载地址，而不是笼统地报「找不到 exe」。
+
+但**插件本身**的 `junimo_focus` / `junimo_game_launch` / `junimo_load_save` 仍然只有 Windows 实现——这三个是插件存在的理由，想用它们需要自己补一份平台适配（聚焦换 `osascript` / `xdotool`，路径探测换各平台的 Steam 目录）。移植的边界就到这里。
 
 ## 已知限制
 
-- **仅支持 Windows**。窗口聚焦、进程启动与读档依赖 PowerShell 与 user32；其它平台会返回明确错误。
+- **插件目前仅 Windows 可用**。窗口聚焦、进程启动与读档依赖 PowerShell 与 user32。但 **Junimo-MCP 已有 macOS / Linux 二进制**，可自行下载使用或按需移植插件三件套。
 - **读档坐标绑定 1280×720 标题界面**。已在窗口模式实机验证；其它分辨率需换算，参见 `src/game.js` 注释。
 - **内置的 `junimo-mcp.exe` 为 Junimo-MCP 的发布产物**（MIT）。本项目不打包 NagiBridge-Remix。
 
