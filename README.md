@@ -43,6 +43,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，�
 | dsh | `>= 0.2.1-rc.2`（声明于 `package.json` 的 `dsh.engines`） |
 | 游戏 | Stardew Valley 1.6.x |
 | SMAPI | 4.x（`junimo_game_launch` 依赖它启动） |
+| POSIX shell | Git for Windows 或 WSL 的 bash，用于启动游戏。缺失时退回 `cmd`，可正常启动，但会多出一个 SMAPI 控制台窗口 |
 | 执行器 mod | [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix)，安装至 `Mods/NagiBridge/` |
 
 SMAPI 与 mod 的安装步骤见 [Junimo-MCP 的 AGENTS.md](https://github.com/mlkgrnt/Junimo-MCP/blob/main/AGENTS.md)。
@@ -107,7 +108,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 |---|---|
 | `junimo_doctor` | 链路诊断。只读，不执行修复。操作游戏前应首先调用 |
 | `junimo_focus` | 将游戏窗口置前。SDV 失焦会自动暂停，此时点击与菜单操作均不生效 |
-| `junimo_game_launch` | 通过 `StardewModdingAPI.exe` 启动游戏并等待 7842 响应；已在运行时不会重复启动 |
+| `junimo_game_launch` | 通过 `StardewModdingAPI.exe` 启动游戏并等待 7842 响应；已在运行时不会重复启动。SMAPI 是控制台程序，直接 spawn 会秒退，因此优先经 bash 启动，找不到 bash 才退回 `cmd` |
 | `junimo_load_save` | 聚焦窗口 → 点击 Load → 点击存档格 → 轮询至 `worldReady`，失败时整轮重试 |
 
 `junimo_load_save` 的难点在于时机而非坐标。`TitleMenu.receiveLeftClick` 在淡入与转场期间会静默丢弃点击，因此实现采用「等待界面稳定 → 点击 → 以 `worldReady` 判定 → 整轮重试」。坐标基于 1280×720 窗口模式的标题界面。
@@ -171,7 +172,6 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 
 - **仅支持 Windows**。窗口聚焦、进程启动与读档依赖 PowerShell 与 user32；其它平台会返回明确错误。
 - **读档坐标绑定 1280×720 标题界面**。已在窗口模式实机验证；其它分辨率需换算，参见 `src/game.js` 注释。
-- **`junimo_game_launch` 在受限宿主下可能失效**。若 dsh 运行于受限的 Job 对象中（IDE 托管的终端、部分沙箱环境），子进程会随宿主会话被回收。插件在启动后 2.5 秒探测进程存活并如实报告；此时由用户手动启动 `StardewModdingAPI.exe` 即可，后续 `junimo_load_save` 不受影响。
 - **内置的 `junimo-mcp.exe` 为 Junimo-MCP 的发布产物**（MIT）。本项目不打包 NagiBridge-Remix。
 
 ## 许可
