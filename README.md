@@ -116,6 +116,8 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 
 37 个 `mcp__junimo__*` 工具的完整清单、参数与注意事项见 [`reference/game-semantics.md`](./reference/game-semantics.md)。
 
+其中 `story` 的 `choose` 在 `junimo-mcp.exe` 内部采用两段式：默认路径先向游戏登记答案，若界面未推进则自动补发一次真实点击。实机验证（宠物领养事件）选完即推进到下一幕。调用方不需要、也不应再补第二发点击。
+
 ## 维护
 
 ### 同步内置 exe
@@ -170,7 +172,6 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 - **仅支持 Windows**。窗口聚焦、进程启动与读档依赖 PowerShell 与 user32；其它平台会返回明确错误。
 - **读档坐标绑定 1280×720 标题界面**。已在窗口模式实机验证；其它分辨率需换算，参见 `src/game.js` 注释。
 - **`junimo_game_launch` 在受限宿主下可能失效**。若 dsh 运行于受限的 Job 对象中（IDE 托管的终端、部分沙箱环境），子进程会随宿主会话被回收。插件在启动后 2.5 秒探测进程存活并如实报告；此时由用户手动启动 `StardewModdingAPI.exe` 即可，后续 `junimo_load_save` 不受影响。
-- **剧情中的问题框无法提交选择**。mod 侧按「玩家面前一格的角色」推断提问者，宠物领养等无 NPC 在场的事件会导致答案被游戏静默丢弃。该缺陷位于上游 mod，本插件不做掩盖。
 - **内置的 `junimo-mcp.exe` 为 Junimo-MCP 的发布产物**（MIT）。本项目不打包 NagiBridge-Remix。
 
 ## 许可
