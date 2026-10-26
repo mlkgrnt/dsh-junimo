@@ -1,5 +1,7 @@
 # dsh-junimo
 
+**简体中文** · [繁體中文](README.zh-Hant.md) · [English](README.en-US.md) · [Español](README.es-ES.md)
+
 DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，并补充 MCP 层无法覆盖的部署自检与游戏生命周期管理。
 
 ## 概述

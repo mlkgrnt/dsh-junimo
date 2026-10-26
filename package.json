@@ -17,6 +17,9 @@
     "skills/",
     "scripts/",
     "README.md",
+    "README.zh-Hant.md",
+    "README.en-US.md",
+    "README.es-ES.md",
     "LICENSE"
   ],
   "keywords": [
