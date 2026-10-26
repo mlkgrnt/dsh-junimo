@@ -61,6 +61,12 @@ if (!launchCmd.includes("cd '") || !launchCmd.endsWith('&& exec ./StardewModding
 if (launchCmd.includes('\\\\')) problems.push('启动命令里残留反斜杠（Git Bash 只认正斜杠）')
 if (!shellLaunchCommand("C:\\it's here\\game").includes("'\\''")) problems.push('撇号没有被正确转义')
 
+// paths 必须自报平台：doctor 靠 platformSupported 区分「文件缺失」与「平台无产物」，
+// 缺了它就会在 macOS/Linux 上把随包的 PE 当成可用二进制（假绿）。
+if (typeof paths.platform !== 'string') problems.push('paths.platform 缺失')
+if (typeof paths.platformSupported !== 'boolean') problems.push('paths.platformSupported 缺失')
+if (process.platform !== 'win32' && paths.platformSupported) problems.push('非 Windows 上 platformSupported 不应为 true')
+
 const expected = ['junimo_doctor', 'junimo_focus', 'junimo_game_launch', 'junimo_load_save']
 for (const name of expected) {
   if (!registered.some(t => t.name === name)) problems.push(`缺工具: ${name}`)

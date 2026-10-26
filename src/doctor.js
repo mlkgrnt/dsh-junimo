@@ -48,8 +48,24 @@ export async function runDoctor(paths) {
   const checks = []
   const { host, port } = splitApiUrl(paths.apiUrl)
 
-  // 1. 二进制
-  if (paths.exeExists) {
+  // 1. 平台与二进制
+  //
+  // 非 Windows 必须单独判，不能落到下面的「找不到 exe」分支：那条提示会让人
+  // 去下载 junimo-mcp.exe，而下载下来也执行不了。真正缺的是平台产物，不是文件。
+  if (!paths.platformSupported && !paths.exeExists) {
+    checks.push({
+      verdict: 'fail',
+      title: `本平台暂无可用二进制（${paths.platform}）`,
+      detail:
+        '随包内置的 junimo-mcp.exe 是 Windows PE，在本平台无法执行。\n' +
+        '   内核本身是跨平台的（CI 在 Linux / macOS 上跑通了全部免游戏断言），' +
+        '但目前没有发布非 Windows 产物。',
+      fix:
+        '自己构建：`dune build` 后设 JUNIMO_MCP_BIN 指向 _build/default/bin/main.exe。\n' +
+        '   注意：即使二进制就位，端到端仍不可用——执行器 mod 的 /press_key 与 /click_tile ' +
+        '走 user32 的 keybd_event / mouse_event，非 Windows 无实现。',
+    })
+  } else if (paths.exeExists) {
     const origin =
       paths.exeSource === 'bundled'
         ? `随包内置${paths.exeVersion ? ` ${paths.exeVersion}` : ''}`

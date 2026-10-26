@@ -39,7 +39,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，�
 
 | 项 | 要求 |
 |---|---|
-| 操作系统 | Windows |
+| 操作系统 | Windows（内核与插件、mod 三层的平台现状不同，见「[平台支持](#平台支持)」） |
 | dsh | `>= 0.2.1-rc.2`（声明于 `package.json` 的 `dsh.engines`） |
 | 游戏 | Stardew Valley 1.6.x |
 | SMAPI | 4.x（`junimo_game_launch` 依赖它启动） |
@@ -167,6 +167,18 @@ dsh plugin --profile <name> add link:/path/to/dsh-junimo
 dsh --profile <name> --dump-config | grep -A8 junimo   # 确认三层均已进入组合
 dsh --profile <name> --no-open                          # 启动；出现 "entries did not activate" 即为异常
 ```
+
+## 平台支持
+
+本插件目前**只在 Windows 上可用**，但原因分布在三层，不是整块缺失。分清这一点对判断移植成本很重要：
+
+| 层 | 平台现状 | 依据 |
+|---|---|---|
+| OCaml 内核（`junimo-mcp.exe` 的内容） | **已跨平台** | 依赖只有 `yojson` + `unix`，源码无平台分支；CI 在 Linux / macOS / Windows 三个 runner 上跑通全部免游戏断言 |
+| 本插件（进程启动、窗口聚焦、路径探测） | **仅 Windows** | 聚焦用 user32，启动走 PowerShell 与 bash，Steam 库按盘符探测 |
+| 执行器 mod（NagiBridge-Remix） | **部分仅 Windows** | `/press_key` 与 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有菜单或带 `no_mouse` 时走进程内调用，本身可移植 |
+
+所以**内核层可以直接构建使用**，缺的是两端的平台适配与产物发布。在非 Windows 上运行 `junimo_doctor` 会明确报告「本平台暂无可用二进制」，而不是误报文件已找到。若你自行 `dune build` 过内核，可用 `JUNIMO_MCP_BIN` 指向构建产物——但端到端仍会卡在 mod 的按键与点击上。
 
 ## 已知限制
 

@@ -19,6 +19,16 @@ export const packageRoot = resolve(here, '..')
 /** mod 的 HTTP 端点。**必须**用 localhost，127.0.0.1 会被 Windows HTTP.sys 拒。 */
 export const DEFAULT_API_URL = 'http://localhost:7842'
 
+/**
+ * 当前平台能否使用**随包/官方渠道**的二进制。
+ *
+ * 随包的 `bin/junimo-mcp.exe` 是 Windows PE。在 macOS/Linux 上它"存在但跑不起来"，
+ * 所以不能只看文件是否存在——否则 doctor 会报一节绿灯，直到 spawn 才炸（假绿）。
+ * 内核本身是跨平台的（CI 在 Linux/macOS 上跑通全部免游戏断言），只是没有发布
+ * 非 Windows 产物。用户若自己 `dune build` 过，可用 JUNIMO_MCP_BIN 指过去。
+ */
+export const bundledBinaryUsable = process.platform === 'win32'
+
 function firstExisting(candidates) {
   const list = candidates.filter(x => typeof x === 'string' && x.length > 0)
   return { hit: list.find(p => existsSync(p)), list }
@@ -60,6 +70,9 @@ function guessGameDirs() {
 
 /** exe 的候选位置：环境变量优先，其次**随包内置**，最后是本机其它副本。 */
 function exeCandidates() {
+  // 非 Windows：随包与硬编码的那些都是 PE，列进来只会伪造"找到了"。
+  // 唯一有意义的来源是用户自己构建并显式指定的二进制。
+  if (!bundledBinaryUsable) return [process.env.JUNIMO_MCP_BIN]
   return [
     process.env.JUNIMO_MCP_BIN,
     join(packageRoot, 'bin', 'junimo-mcp.exe'),
@@ -110,9 +123,10 @@ function newestReleaseExe() {
  * `!!js` 表达式都消费同一个对象。
  */
 export function resolvePaths() {
-  const exeProbe = firstExisting([...exeCandidates(), newestReleaseExe()])
+  const exeProbe = firstExisting([...exeCandidates(), bundledBinaryUsable ? newestReleaseExe() : undefined])
   const gameProbe = firstExisting(guessGameDirs())
   const gameDir = gameProbe.hit
+  // 非 Windows 且没人指定自定义二进制时，这个字段只作展示用途（真实值见 exeExists）。
   const exe = exeProbe.hit ?? exeProbe.list[0] ?? join(packageRoot, 'bin', 'junimo-mcp.exe')
 
   return {
@@ -121,6 +135,9 @@ export function resolvePaths() {
     exeSource: sourceOf(exe),
     exeVersion: readBundledVersion(),
     exeCandidates: exeProbe.list,
+    platform: process.platform,
+    /** 随包二进制在本平台是否可用；false 时 doctor 会给出专门的说明。 */
+    platformSupported: bundledBinaryUsable,
     packageRoot,
     skillDir: join(packageRoot, 'skills'),
     referenceDir: join(packageRoot, 'reference'),
