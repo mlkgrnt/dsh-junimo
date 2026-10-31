@@ -17,9 +17,31 @@ const ctx = {
   provide: (name, value) => services.set(name, value),
   tools: { register: tool => registered.push(tool) },
   systemPrompt: { section: segment => sections.push(segment) },
+  // 仿 dsh 的按需注入：服务不在就整个跳过回调。headless / tui profile 没有
+  // webServer，插件必须照样激活（37 个工具 + 提示词一条不能少）。
+  inject: (names, callback) => {
+    if (names.every(name => ctx[name] !== undefined)) callback(ctx)
+  },
 }
 
 apply(ctx)
+
+/* ---------- 季历面板路由 ---------- */
+// 单独跑一遍带 webServer 的场景：路由没注册上，面板就是一块空白，
+// 而这在宿主里没有任何报错，只能靠这里守住。
+const routes = []
+const webCtx = {
+  ...ctx,
+  provide: (name, value) => services.set(name, value),
+  tools: { register() {} },
+  systemPrompt: { section() {} },
+  effect: factory => factory(),
+  webServer: { register: route => routes.push(route) },
+}
+webCtx.inject = (names, callback) => {
+  if (names.every(name => webCtx[name] !== undefined)) callback(webCtx)
+}
+apply(webCtx)
 
 const paths = resolvePaths()
 
@@ -73,6 +95,38 @@ if (process.platform === 'win32' && paths.platformAsset !== 'junimo-mcp.exe') pr
 const expected = ['junimo_doctor', 'junimo_focus', 'junimo_game_launch', 'junimo_load_save']
 for (const name of expected) {
   if (!registered.some(t => t.name === name)) problems.push(`缺工具: ${name}`)
+}
+
+// ---- 面板路由 ----
+console.log('\n=== 季历面板路由 ===')
+const panelRoute = routes.find(r => r.path === '/junimo/panel')
+console.log(`  ${routes.length} 条路由，命中: ${panelRoute === undefined ? '无' : `${panelRoute.kind} ${panelRoute.path}`}`)
+if (panelRoute === undefined) {
+  problems.push('季历面板路由没注册（有 webServer 时应当注册 /junimo/panel）')
+} else {
+  if (panelRoute.kind !== 'exact') problems.push(`面板路由 kind 应为 exact，实际 ${panelRoute.kind}`)
+  // 非 GET/HEAD 必须 405，别把写请求漏进只读观测面
+  const write = { statusCode: 0, headers: {}, body: '', setHeader(k, v) { this.headers[k] = v }, end(v) { this.body = v ?? '' } }
+  await panelRoute.handler({ method: 'POST' }, write)
+  console.log(`  POST → ${write.statusCode} allow=${write.headers.allow}`)
+  if (write.statusCode !== 405) problems.push(`非 GET 请求应返回 405，实际 ${write.statusCode}`)
+  // GET 必须永远回可解析 JSON：游戏没开时是 ok:false，而不是空响应/握手失败
+  const read = { statusCode: 200, headers: {}, body: '', setHeader() {}, end(v) { this.body = v ?? '' } }
+  const started = Date.now()
+  await panelRoute.handler({ method: 'GET' }, read)
+  let dto
+  try {
+    dto = JSON.parse(read.body)
+  } catch {
+    problems.push('GET 返回的不是 JSON')
+  }
+  console.log(`  GET → ${read.statusCode} ${read.body.length}B ${Date.now() - started}ms ${dto === undefined ? '' : `ready=${dto.ready}`}`)
+  if (dto !== undefined) {
+    // ok 表示「这次面板请求本身成功」，ready 才是「游戏进档了」。
+    // 未连接时必须带 error 文案，面板靠它显示「连不上游戏」而不是白屏。
+    if (typeof dto.ready !== 'boolean') problems.push('DTO 缺布尔 ready')
+    if (dto.ready === false && typeof dto.error !== 'string') problems.push('未连接时应当带 error 文案')
+  }
 }
 
 console.log('\n=== doctor 实跑 ===')

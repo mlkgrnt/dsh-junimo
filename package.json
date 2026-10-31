@@ -1,16 +1,18 @@
 {
   "name": "dsh-junimo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DeepSeek Harness 插件：为《星露谷物语》提供 37 个操控工具，并补充部署自检与游戏生命周期管理",
   "type": "module",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
+    "./client": "./client/index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "src/",
+    "client/",
     "bin/",
     "cordis.patch.yml",
     "reference/",
@@ -40,10 +42,20 @@
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
     }
   },
   "scripts": {
-    "smoke": "node test/smoke.mjs"
+    "smoke": "node test/smoke.mjs",
+    "client": "node test/client-bundle.mjs",
+    "panel": "node test/panel-dto.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",

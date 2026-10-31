@@ -16,6 +16,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { probePort, splitApiUrl } from './api.js'
 import { runDoctor } from './doctor.js'
 import { focusGameWindow, launchGame, loadSave, requireWindows } from './game.js'
+import { readPanelState } from './panel.js'
 import { resolvePaths } from './paths.js'
 
 export const name = 'junimo'
@@ -61,6 +62,45 @@ export function apply(ctx) {
   // patch 里的 mcp-client 行与 skill provider 行都 inject 了这个服务，
   // 所以 exe / skill 目录只在这里算一次。
   ctx.provide('junimoPaths', paths)
+
+  // 季历面板的数据入口。**不放进顶层 inject**：headless / tui profile 没有
+  // webServer，那样整个插件（含 37 个工具的提示词）都会激活不了。按需注入时
+  // 缺服务只是这一条不起作用。
+  ctx.inject(['webServer'], scoped => {
+    scoped.effect(
+      () =>
+        scoped.webServer.register({
+          kind: 'exact',
+          path: '/junimo/panel',
+          async handler(req, res) {
+            if (req.method !== 'GET' && req.method !== 'HEAD') {
+              res.statusCode = 405
+              res.setHeader('allow', 'GET, HEAD')
+              res.end()
+              return
+            }
+            let body
+            try {
+              body = JSON.stringify(await readPanelState(paths))
+            } catch (error) {
+              // 面板是只读观测面，任何异常都要让浏览器拿到可渲染的 JSON，
+              // 而不是一个握手失败的空响应。
+              body = JSON.stringify({
+                ok: false,
+                mod: false,
+                ready: false,
+                error: error instanceof Error ? error.message : String(error),
+              })
+            }
+            res.statusCode = 200
+            res.setHeader('content-type', 'application/json; charset=utf-8')
+            res.setHeader('cache-control', 'no-store')
+            res.end(body)
+          },
+        }),
+      'junimo: panel route',
+    )
+  })
 
   ctx.systemPrompt.section({
     name: 'junimo:rules',
