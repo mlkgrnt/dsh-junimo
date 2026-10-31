@@ -10,13 +10,14 @@ This repository is a **dsh bundle**. It operates at the profile layer of [DeepSe
 
 Game logic is not implemented here. All 37 tools come from `junimo-mcp.exe` (OCaml, single file) shipped by [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP), bridged over the stdio MCP protocol by the official `@deepseek-ai/dsh-mcp-client` and surfaced to the model as `mcp__junimo__<tool>`. **This repository does not modify a single line of Junimo-MCP.**
 
-The plugin itself has three responsibilities:
+The plugin itself has four responsibilities:
 
 1. Wire up the MCP bridge and expose a `junimoPaths` service as the single source of truth for the executable and skill directory
 2. Inject Stardew operating discipline into the system prompt, avoiding the usual timing and save-related mistakes
 3. Register 4 native tools: diagnostics, window focus, game launch, save loading
+4. Register a read-only **season calendar panel** in the right sidebar of the dsh Web UI
 
-Item 3 cannot be done by MCP tools — the mod runs inside the game process, so it can neither start its own process nor raise its own window.
+Item 3 cannot be done by MCP tools — the mod runs inside the game process, so it can neither start its own process nor raise its own window. Item 4 is implemented as one host route plus a prebuilt client bundle; see “[Season calendar panel](#season-calendar-panel)”.
 
 `junimo-mcp.exe` is bundled (`bin/`, v3.2.1, 6 MB). Installing the plugin is enough; no separate binary download.
 
@@ -36,6 +37,7 @@ model ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-m
 | Prompt discipline | This plugin | System prompt section `junimo:rules`, roughly 1000 characters |
 | Bundled skill | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`, loaded on demand, no resident context cost |
 | Reference docs | This plugin | `reference/game-semantics.md`, with a tool cheat sheet and known boundaries |
+| Season calendar panel | This plugin | Read-only right-sidebar panel: host route `GET /junimo/panel` + prebuilt `client/index.js` |
 
 ## Requirements
 
@@ -121,6 +123,50 @@ The full list of 37 `mcp__junimo__*` tools, with arguments and caveats, is in [`
 
 Among them, `story`'s `choose` is two-stage inside `junimo-mcp.exe`: the default path first registers the answer with the game, and if the screen does not advance it automatically follows up with one real click. Verified on a real save (pet adoption event) — the event advanced to the next scene immediately after choosing. Callers need not, and should not, send a second click.
 
+## Season calendar panel
+
+The plugin registers a read-only panel, **Stardew Season Calendar**, in the **right sidebar** of the dsh Web UI, so the current game state sits next to the conversation while you watch the model play.
+
+![Season calendar panel](./docs/panel.jpg)
+
+Open the right sidebar (`Ctrl+Shift+B`) and pick “季历”. The panel has three parts:
+
+| Part | Contents |
+|---|---|
+| Season card | Season, year, date, weekday, week number, weather icon, in-game time, and a progress bar for the day |
+| Calendar | A 4×7 grid covering the 28 days of the season; weekends are tinted, today is highlighted, and festivals — including ones already past — are marked |
+| Status card | Player name, location and coordinates, facing, HP and stamina bars, gold, held item, inventory (with the watering can's water level); the menu type when a menu is open, and a banner while a scripted event is running |
+
+Below the calendar it also shows the **next festival and a countdown** (for example “Spirit's Eve · Fall 27, in 5 days”).
+
+### Where the data comes from
+
+The browser **cannot reach** `http://localhost:7842`: the desktop page runs under the `dsh-app://` scheme, so a direct call is both cross-origin and blocked by that custom scheme. The plugin therefore proxies the data from **inside the host process**:
+
+```
+browser ──GET /junimo/panel──▶ dsh host (this plugin's webServer route) ──HTTP──▶ NagiBridge /state ──▶ game
+```
+
+`src/panel.js` turns the mod's Chinese, model-facing state into a small DTO the front end can render directly: every numeric field is type-coerced (the mod reports `null` or strings at some stages), and missing fields degrade to empty values instead of throwing.
+
+The front end polls every 5 seconds with an `AbortSignal`, cancelled as soon as the panel unmounts.
+
+### Degradation
+
+The panel is an observation surface, so an error must never hand the browser a broken response — the route always returns 200 with renderable JSON:
+
+| Situation | Behaviour |
+|---|---|
+| Game not started / mod not loaded | The header greys out, the calendar still renders for the current season, and the status card explains that the game is unreachable |
+| Sitting on the title screen, no save loaded | Same as above, marked as not yet in-game |
+| Mod response times out | Still 200, with an `error` field (2.5 s timeout by default; a modal menu can stall the mod) |
+
+### Registered for the web profile only
+
+The panel route is registered **on demand** inside `ctx.inject(['webServer'])` rather than in the plugin's top-level `inject`. The headless and tui profiles have no `webServer` service; declaring the dependency at the top level would prevent the whole plugin — including the 37-tool bridge and the prompt section — from activating. With on-demand injection, a missing service only disables this one route.
+
+The client bundle is declared by the `dsh.client` field in `package.json` (`platform: web`) and depends on `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`; `client/index.js` is a prebuilt artifact, so nothing is built at install time.
+
 ## Maintenance
 
 ### Syncing the bundled executable
@@ -144,6 +190,9 @@ src/paths.js    Resolution and probing for the executable / game directory / bun
 src/api.js      Minimal HTTP client for NagiBridge (liveness and timing fallbacks)
 src/doctor.js   Checks and rendering for junimo_doctor
 src/game.js     Focus, launch, save loading
+src/panel.js    Panel DTO: folds the mod's /state into a shape the front end renders directly
+client/index.js The panel's client bundle (prebuilt, served by the host as-is)
+docs/           Screenshots used by the READMEs
 skills/         Bundled skill
 reference/      Long-form docs read on demand
 scripts/        Maintenance scripts
@@ -158,9 +207,13 @@ The source is plain ESM JavaScript with no build step — `src/*.js` is the publ
 node test/smoke.mjs                    # offline smoke, needs neither the game nor a dsh host
 node test/verify-load-save.mjs         # on a real game: launch, load a save, verify worldReady
 node test/verify-load-save.mjs --existing   # when the game is already running, verify loading only
+
+node test/panel-dto.mjs                # panel DTO: every malformed input degrades to "not connected"
+node test/client-bundle.mjs            # structure and component-render assertions for the client bundle
+node test/render-panel.mjs out.html dark  # emit a static preview (light | dark | offline)
 ```
 
-The offline smoke test verifies the `junimoPaths` service, the prompt section, the registration of all 4 tools, and runs `junimo_doctor` once. It relies on a local stub of `node_modules/@deepseek-ai/dsh-tools` so it can run under plain Node; in a real deployment that package is provided by the dsh host.
+The offline smoke test verifies the `junimoPaths` service, the prompt section, the registration of all 4 tools, the launch-command escaping, and the panel route (GET 200 / POST 405), and runs `junimo_doctor` once. It relies on a local stub of `node_modules/@deepseek-ai/dsh-tools` so it can run under plain Node; in a real deployment that package is provided by the dsh host.
 
 ### Verifying inside dsh
 

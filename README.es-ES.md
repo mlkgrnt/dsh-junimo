@@ -10,13 +10,14 @@ Este repositorio es un **bundle de dsh**. Actúa en la capa de profile de [DeepS
 
 La lógica del juego no se implementa aquí. Las 37 herramientas provienen de `junimo-mcp.exe` (OCaml, archivo único) distribuido por [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP), conectado mediante el protocolo MCP sobre stdio por el `@deepseek-ai/dsh-mcp-client` oficial y expuesto al modelo como `mcp__junimo__<herramienta>`. **Este repositorio no modifica ni una línea de Junimo-MCP.**
 
-El plugin asume tres responsabilidades:
+El plugin asume cuatro responsabilidades:
 
 1. Montar el puente MCP y exponer un servicio `junimoPaths` como única fuente de verdad del ejecutable y del directorio de skills
 2. Inyectar disciplina operativa de Stardew en el prompt del sistema, evitando los errores habituales de sincronización y de guardado
 3. Registrar 4 herramientas nativas: diagnóstico, foco de ventana, lanzamiento del juego y carga de partida
+4. Registrar un **panel de calendario de estación** de solo lectura en la barra lateral derecha de la interfaz web de dsh
 
-El punto 3 no puede hacerlo ninguna herramienta MCP: el mod se ejecuta dentro del proceso del juego, así que no puede iniciar su propio proceso ni traer su propia ventana al frente.
+El punto 3 no puede hacerlo ninguna herramienta MCP: el mod se ejecuta dentro del proceso del juego, así que no puede iniciar su propio proceso ni traer su propia ventana al frente. El punto 4 se implementa con una ruta en el host más un bundle de cliente ya compilado; ver «[Panel del calendario de estación](#panel-del-calendario-de-estación)».
 
 `junimo-mcp.exe` va incluido (`bin/`, v3.2.1, 6 MB). Basta con instalar el plugin; no hay que descargar ningún binario aparte.
 
@@ -36,6 +37,7 @@ modelo ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-
 | Disciplina de prompt | Este plugin | Sección del prompt del sistema `junimo:rules`, unos 1000 caracteres |
 | Skill incluida | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`, se carga bajo demanda, sin coste de contexto permanente |
 | Documentación de referencia | Este plugin | `reference/game-semantics.md`, con tabla rápida de herramientas y límites conocidos |
+| Panel del calendario | Este plugin | Panel de solo lectura en la barra derecha: ruta del host `GET /junimo/panel` + `client/index.js` ya compilado |
 
 ## Requisitos
 
@@ -121,6 +123,50 @@ La lista completa de las 37 herramientas `mcp__junimo__*`, con argumentos y adve
 
 Entre ellas, `choose` de `story` es de dos fases dentro de `junimo-mcp.exe`: la ruta por defecto registra primero la respuesta en el juego y, si la pantalla no avanza, envía automáticamente un clic real de seguimiento. Verificado en partida real (evento de adopción de mascota): tras elegir, el evento avanzó a la escena siguiente. Quien llama no necesita, y no debe, enviar un segundo clic.
 
+## Panel del calendario de estación
+
+El plugin registra un panel de solo lectura, **Calendario de estación**, en la **barra lateral derecha** de la interfaz web de dsh, de modo que el estado actual del juego queda junto a la conversación mientras observas jugar al modelo.
+
+![Panel del calendario](./docs/panel.jpg)
+
+Abre la barra lateral derecha (`Ctrl+Shift+B`) y elige «季历». El panel tiene tres partes:
+
+| Parte | Contenido |
+|---|---|
+| Tarjeta de estación | Estación, año, fecha, día de la semana, número de semana, icono del tiempo, hora del juego y una barra de progreso del día |
+| Calendario | Una rejilla de 4×7 con los 28 días de la estación; los fines de semana van sombreados, hoy aparece resaltado y los festivales —también los ya pasados— quedan marcados |
+| Tarjeta de estado | Nombre del jugador, ubicación y coordenadas, orientación, barras de vida y energía, oro, objeto en mano, inventario (con el agua de la regadera); además, el tipo de menú cuando hay uno abierto y un aviso mientras transcurre un evento guionizado |
+
+Debajo del calendario muestra también el **próximo festival y su cuenta atrás** (por ejemplo «Noche de los Espíritus · Otoño 27, en 5 días»).
+
+### De dónde salen los datos
+
+El navegador **no puede llegar** a `http://localhost:7842`: la página de escritorio se ejecuta bajo el esquema `dsh-app://`, así que una llamada directa es a la vez de otro origen y queda bloqueada por ese esquema. Por eso el plugin hace de proxy desde **dentro del proceso anfitrión**:
+
+```
+navegador ──GET /junimo/panel──▶ host de dsh (ruta webServer de este plugin) ──HTTP──▶ NagiBridge /state ──▶ juego
+```
+
+`src/panel.js` convierte el estado en chino que el mod ofrece al modelo en un DTO pequeño que el front end puede pintar directamente: todos los campos numéricos se normalizan (el mod devuelve `null` o cadenas en algunas fases) y los campos ausentes se degradan a valores vacíos en lugar de lanzar una excepción.
+
+El front end consulta cada 5 segundos con un `AbortSignal`, que se cancela en cuanto el panel se desmonta.
+
+### Degradación
+
+El panel es una superficie de observación, así que un error nunca debe devolver al navegador una respuesta rota: la ruta siempre responde 200 con JSON representable.
+
+| Situación | Comportamiento |
+|---|---|
+| Juego no iniciado / mod no cargado | La cabecera se atenúa, el calendario sigue pintándose para la estación actual y la tarjeta de estado explica que el juego no responde |
+| En la pantalla de título, sin partida cargada | Igual que arriba, marcado como aún sin partida |
+| El mod agota el tiempo de espera | Sigue devolviendo 200, con un campo `error` (2,5 s por defecto; un menú modal puede bloquear el mod) |
+
+### Solo se registra en el profile web
+
+La ruta del panel se registra **bajo demanda** dentro de `ctx.inject(['webServer'])`, no en el `inject` de nivel superior del plugin. Los profiles headless y tui no tienen el servicio `webServer`; declarar la dependencia arriba impediría que el plugin entero —incluido el puente de 37 herramientas y la sección de prompt— se activara. Con la inyección bajo demanda, la ausencia del servicio solo desactiva esta ruta.
+
+El bundle de cliente se declara con el campo `dsh.client` de `package.json` (`platform: web`) y depende de `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`; `client/index.js` es un artefacto ya compilado, así que no se construye nada al instalar.
+
 ## Mantenimiento
 
 ### Sincronizar el ejecutable incluido
@@ -144,6 +190,9 @@ src/paths.js    Resolución y sondeo del ejecutable / directorio del juego / rec
 src/api.js      Cliente HTTP mínimo para NagiBridge (comprobación y apoyos de sincronización)
 src/doctor.js   Comprobaciones y renderizado de junimo_doctor
 src/game.js     Foco, lanzamiento, carga de partida
+src/panel.js    DTO del panel: convierte el /state del mod en algo que el front end pinta directamente
+client/index.js Bundle de cliente del panel (ya compilado, el host lo sirve tal cual)
+docs/           Capturas usadas por los README
 skills/         Skill incluida
 reference/      Documentos largos que se leen bajo demanda
 scripts/        Scripts de mantenimiento
@@ -158,9 +207,13 @@ El código es ESM JavaScript puro, sin paso de compilación: `src/*.js` es el ar
 node test/smoke.mjs                    # humo sin conexión, no necesita el juego ni un host dsh
 node test/verify-load-save.mjs         # máquina real: lanza el juego, carga partida, verifica worldReady
 node test/verify-load-save.mjs --existing   # si el juego ya está abierto, solo verifica la carga
+
+node test/panel-dto.mjs                # DTO del panel: toda entrada malformada degrada a «sin conexión»
+node test/client-bundle.mjs            # aserciones de estructura y de renderizado del bundle de cliente
+node test/render-panel.mjs out.html dark  # genera una vista previa estática (light | dark | offline)
 ```
 
-La prueba de humo sin conexión verifica el servicio `junimoPaths`, la sección de prompt, el registro de las 4 herramientas y ejecuta `junimo_doctor` una vez. Depende de un stub local de `node_modules/@deepseek-ai/dsh-tools` para poder ejecutarse con Node directamente; en un despliegue real ese paquete lo aporta el host de dsh.
+La prueba de humo sin conexión verifica el servicio `junimoPaths`, la sección de prompt, el registro de las 4 herramientas, el escapado del comando de lanzamiento y la ruta del panel (GET 200 / POST 405), y ejecuta `junimo_doctor` una vez. Depende de un stub local de `node_modules/@deepseek-ai/dsh-tools` para poder ejecutarse con Node directamente; en un despliegue real ese paquete lo aporta el host de dsh.
 
 ### Verificación dentro de dsh
 

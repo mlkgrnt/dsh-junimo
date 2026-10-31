@@ -10,13 +10,14 @@ DeepSeek Harness 外掛，為《星露谷物語》提供 37 個操控工具，�
 
 遊戲邏輯不在此實作。全部 37 個工具由 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的 `junimo-mcp.exe`（OCaml，單一檔案）提供，經官方 `@deepseek-ai/dsh-mcp-client` 以 stdio MCP 協定橋接，模型側呈現為 `mcp__junimo__<工具名>`。**本儲存庫不修改 Junimo-MCP 的任何程式碼。**
 
-外掛自身承擔三項職責：
+外掛自身承擔四項職責：
 
 1. 裝配 MCP 橋接，並提供 `junimoPaths` 服務作為 exe、skill 目錄的唯一真源
 2. 向系統提示詞注入星露谷操作紀律，規避時序與存檔類常見錯誤
 3. 註冊 4 個原生工具：診斷、視窗聚焦、遊戲啟動、讀檔
+4. 在 dsh Web UI 右側邊欄註冊一塊唯讀的「季歷面板」
 
-第 3 項無法由 MCP 工具實作——mod 執行於遊戲行程內部，不能啟動自身行程，也不能將自身視窗置前。
+第 3 項無法由 MCP 工具實作——mod 執行於遊戲行程內部，不能啟動自身行程，也不能將自身視窗置前。第 4 項由一條宿主路由加一份預先建置的用戶端 bundle 實作，見「[季歷面板](#季歷面板)」。
 
 `junimo-mcp.exe` 已隨包內建（`bin/`，v3.2.1，6 MB），安裝外掛後無需另行取得二進位檔。
 
@@ -36,6 +37,7 @@ DeepSeek Harness 外掛，為《星露谷物語》提供 37 個操控工具，�
 | 提示詞紀律 | 本外掛 | 系統提示詞段落 `junimo:rules`，約 1000 字元 |
 | 隨包 skill | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`，按需載入，不佔常駐上下文 |
 | 參考文件 | 本外掛 | `reference/game-semantics.md`，含工具速查表與已知邊界 |
+| 季歷面板 | 本外掛 | 右側邊欄唯讀面板：宿主路由 `GET /junimo/panel` + 預先建置的 `client/index.js` |
 
 ## 前置要求
 
@@ -121,6 +123,50 @@ profile 的 `cordis.patch.yml` 按 `id` 覆寫外掛行。patch 會整體替換 
 
 其中 `story` 的 `choose` 在 `junimo-mcp.exe` 內部採用兩段式：預設路徑先向遊戲登記答案，若介面未推進則自動補發一次真實點擊。實機驗證（寵物領養事件）選完即推進到下一幕。呼叫方不需要、也不應再補第二發點擊。
 
+## 季歷面板
+
+外掛在 dsh Web UI 的**右側邊欄**註冊一塊唯讀觀測面板「星露谷季歷」，把遊戲目前狀態攤在對話旁邊，方便人隨時對照模型正在做什麼。
+
+![季歷面板](./docs/panel.jpg)
+
+展開右側邊欄（`Ctrl+Shift+B`）後點「星露谷季歷」即可。面板分三塊：
+
+| 區塊 | 內容 |
+|---|---|
+| 季節卡 | 季節、第幾年、日期、星期、週數、天氣圖示、目前時刻，以及當日進度條 |
+| 季歷 | 4×7 排滿一季 28 天；週末有底色，今日高亮，節慶與趕不上的節慶各有標記 |
+| 狀態卡 | 玩家名、所在地圖與座標、朝向、HP 與體力條、金錢、手持物、背包（澆水壺附水量）；選單開啟時顯示選單類型，劇本事件進行中時顯示劇情橫幅 |
+
+日曆下方另給**下一個節慶的名稱與倒數**（如「靈魂之夜 · 秋 27 日 5 天後」）。
+
+### 資料來源
+
+瀏覽器**連不上** `http://localhost:7842`：桌面端頁面執行在 `dsh-app://` 協定之下，直連既不跨來源，也會被該自訂協定攔下。因此面板資料由外掛在**宿主行程內**代理：
+
+```
+瀏覽器 ──GET /junimo/panel──▶ dsh 宿主（本外掛的 webServer 路由） ──HTTP──▶ NagiBridge /state ──▶ 遊戲
+```
+
+`src/panel.js` 把 mod 面向模型的中文長文字狀態收成前端可直接渲染的小 DTO：數值欄位一律兜住型別（mod 在部分階段會給 `null` 或字串），缺欄位退化為空值而不拋錯。
+
+前端每 5 秒輪詢一次，請求帶 `AbortSignal`，面板卸載即取消。
+
+### 降級行為
+
+面板是觀測面，異常不該讓瀏覽器拿到壞回應——路由任何情況下都回傳 200 與可渲染的 JSON：
+
+| 情境 | 表現 |
+|---|---|
+| 遊戲未啟動 / mod 未載入 | 標頭灰化為「未連線」，日曆仍依目前季節渲染，狀態卡顯示「連不上遊戲（mod 沒起來，或遊戲沒開）」 |
+| 停在標題畫面、尚未進檔 | 同上，標註「未進檔」 |
+| mod 回應逾時 | 仍回傳 200，附 `error` 欄位（預設 2.5 秒逾時，模態介面下 mod 會卡住） |
+
+### 只為 web profile 註冊
+
+面板路由掛在 `ctx.inject(['webServer'])` 裡**按需註冊**，不放入外掛的頂層 `inject`。headless / tui profile 沒有 `webServer` 服務，若在頂層宣告這個依賴，整個外掛——包括 37 個工具的裝配與提示詞段落——會一起無法啟動；按需注入時缺服務只是這一條不生效。
+
+用戶端 bundle 由 `package.json` 的 `dsh.client` 欄位宣告（`platform: web`），依賴 `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`；`client/index.js` 是預先建置的產物，安裝後無需再建置。
+
 ## 維護
 
 ### 同步內建 exe
@@ -144,6 +190,9 @@ src/paths.js    exe / 遊戲目錄 / 包內資源的解析與偵測
 src/api.js      NagiBridge 的最小 HTTP 客戶端（探活與時序兜底）
 src/doctor.js   junimo_doctor 的檢查項與渲染
 src/game.js     聚焦、啟動、讀檔
+src/panel.js    季歷面板 DTO：把 mod 的 /state 收成前端可直接渲染的形狀
+client/index.js 季歷面板的用戶端 bundle（預先建置，由宿主直接 serve）
+docs/           README 用的截圖
 skills/         隨包 skill
 reference/      按需讀取的長文件
 scripts/        維護腳本
@@ -158,9 +207,13 @@ test/           冒煙與實機驗證腳本
 node test/smoke.mjs                    # 離線冒煙，不需要遊戲與 dsh 宿主
 node test/verify-load-save.mjs         # 實機：啟動遊戲、讀檔，校驗 worldReady
 node test/verify-load-save.mjs --existing   # 遊戲已手動啟動時，僅驗證讀檔
+
+node test/panel-dto.mjs                # 面板 DTO：各類畸形輸入都退化為「沒連上」
+node test/client-bundle.mjs            # 用戶端 bundle 的結構與元件渲染斷言
+node test/render-panel.mjs out.html dark  # 產生靜態預覽（light | dark | offline）
 ```
 
-離線冒煙校驗 `junimoPaths` 服務、提示詞段落、4 個工具的註冊結果，並執行一次 `junimo_doctor`。它依賴 `node_modules/@deepseek-ai/dsh-tools` 的本機 stub 以支援直接以 Node 執行；實際部署中該套件由 dsh 宿主提供。
+離線冒煙校驗 `junimoPaths` 服務、提示詞段落、4 個工具的註冊結果、啟動指令的轉義、面板路由（GET 200 / POST 405），並執行一次 `junimo_doctor`。它依賴 `node_modules/@deepseek-ai/dsh-tools` 的本機 stub 以支援直接以 Node 執行；實際部署中該套件由 dsh 宿主提供。
 
 ### 在 dsh 中驗證
 
