@@ -246,3 +246,7 @@ The **plugin's own** `junimo_focus` / `junimo_game_launch` / `junimo_load_save` 
 ## License
 
 MIT, see [LICENSE](./LICENSE). The bundled `junimo-mcp.exe` and the executor mod each follow their own license.
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

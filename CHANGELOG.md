@@ -2,7 +2,24 @@
 
 体例参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号跟 `package.json` 走。
 
+## [0.3.2] - 2026-11-04
+
+### 修复
+- **`sleep` 不再「谎报写盘」**：内置 exe 升到 **v3.2.4**。原来只等「日期变了」就回
+  「进度已写盘」，但白天强行触发睡觉时游戏会推进日期却**跳过存盘**（实测：回执说写了，
+  重开游戏还是前一天）。现在 exe 会比对存档目录里最新 `SaveGameInfo` 的 mtime，
+  写不进去就明确报错并提示「再睡一觉」。
+
+### 变更
+- 四语言 README 加上 **powered by dsh** 徽章。
+
+## [0.3.1] - 2026-11-04
+
+### 变更
+- 内置 exe 升到 v3.2.3；`reference/game-semantics.md` 订正过时结论（方向键绑定 / `CanMove` / 事件期间按键被吃）。
+
 ## [0.3.0] - 2026-11-04
+
 
 ### 变更
 - **执行器换成自研 [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge)**，端口 **7842 → 7850**；内置 exe 升到 v3.2.2（默认后端 7850，NagiBridge 降为兼容路径）。

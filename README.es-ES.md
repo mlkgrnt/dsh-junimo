@@ -246,3 +246,7 @@ Las herramientas **propias del plugin** `junimo_focus` / `junimo_game_launch` / 
 ## Licencia
 
 MIT, ver [LICENSE](./LICENSE). El `junimo-mcp.exe` incluido y el mod ejecutor siguen cada uno su propia licencia.
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

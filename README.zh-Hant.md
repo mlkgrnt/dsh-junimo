@@ -246,3 +246,7 @@ dsh --profile <name> --no-open                          # 啟動；出現 "entri
 ## 授權
 
 MIT，見 [LICENSE](./LICENSE)。內建的 `junimo-mcp.exe` 與執行器 mod 各自遵循其原授權。
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
