@@ -17,7 +17,8 @@ const ICON = { ok: '✓', warn: '!', fail: '✗' }
  * 读 SMAPI 最近日志，只挑**真的出错**的行。
  *
  * 坑：日志里大量 `TRACE ... completed without exceptions` 字面含 "exception"，
- * 按关键词粗筛会天天误报，所以必须看级别字段。
+ * 按关键词粗筛会天天误报，所以必须看级别字段。另外两类已知噪声单独排除，
+ * 见下方 BENIGN 判断（执行器启动横幅、非 Steam 启动的成就警告）。
  */
 function smapiLogIssues(appData) {
   if (!appData) return []
@@ -27,6 +28,11 @@ function smapiLogIssues(appData) {
     const lines = readFileSync(logPath, 'utf8').split(/\r?\n/)
     return lines
       .filter(line => {
+        // 已知良性、但级别不低的噪声，先排掉，否则天天误报：
+        //   1) 执行器 mod 用 ALERT 打自己的启动横幅（"已启动，HTTP 监听 …"）
+        //   2) 非 Steam 启动时的成就警告（对自动化无影响）
+        if (/ALERT (JunimoBridge|NagiBridge)\]/.test(line)) return false
+        if (/Steam achievements won't work/.test(line)) return false
         const level = line.match(/^\[[^\]]*?\s(TRACE|DEBUG|INFO|WARN|ALERT|ERROR|CRITICAL)[^\]]*\]/)
         if (level) return level[1] === 'ERROR' || level[1] === 'ALERT' || level[1] === 'CRITICAL'
         // 非标准行（多行堆栈、SMAPI 自己贴的异常）才退回关键词。
@@ -101,7 +107,8 @@ export async function runDoctor(paths) {
           detail: 'mod 没加载，或游戏没启动',
           fix:
             '用 StardewModdingAPI.exe 启动游戏（**别走 Steam**，那样不加载 mod）。\n' +
-            '若游戏已在跑：检查 Mods\\NagiBridge\\ 里有 NagiBridge.dll + manifest.json，且没有残留的旧版 NagiBridge。',
+            '若游戏已在跑：检查 Mods\\JunimoBridge\\ 里有 JunimoBridge.dll + manifest.json。\n' +
+            '用 NagiBridge-Remix 当执行器时端口是 7842，需设 STARDEW_API_URL=http://localhost:7842。',
         },
   )
 
@@ -110,11 +117,17 @@ export async function runDoctor(paths) {
     const status = await apiGet(paths.apiUrl, '/status', 4000)
     if (status.ok && status.data && typeof status.data === 'object') {
       const info = status.data
-      checks.push({
-        verdict: 'ok',
-        title: 'NagiBridge 响应',
-        detail: `version=${String(info.version ?? '?')} build=${String(info.build ?? '?')} worldReady=${String(info.worldReady)}`,
-      })
+      // 标题跟 /status 的 server 字段走：JunimoBridge / NagiBridge 都能自报家门，
+      // 硬编码其中一个名字会在换执行器时误导人。
+      const serverName = typeof info.server === 'string' && info.server ? info.server : '执行器 mod'
+      // NagiBridge 有 build，JunimoBridge 有 tick；有就显示，没有不占位。
+      const detail = [
+        `version=${String(info.version ?? '?')}`,
+        info.build ? `build=${String(info.build)}` : undefined,
+        `worldReady=${String(info.worldReady)}`,
+        info.tick !== undefined ? `tick=${String(info.tick)}` : undefined,
+      ].filter(Boolean).join(' ')
+      checks.push({ verdict: 'ok', title: `${serverName} 响应`, detail })
       checks.push(
         info.worldReady === true
           ? { verdict: 'ok', title: '存档已就绪', detail: '可以直接调 mcp__junimo__* 工具' }
@@ -128,9 +141,9 @@ export async function runDoctor(paths) {
     } else {
       checks.push({
         verdict: 'fail',
-        title: 'NagiBridge 无响应',
+        title: '执行器 mod 无响应',
         detail: status.error ?? '请求超时',
-        fix: '端口开着但 mod 不答：多半是模态界面卡住，或加载的是原版 NagiBridge（与 Remix 抢端口）。看 SMAPI 控制台。',
+        fix: '端口开着但 mod 不答：多半是模态界面卡住，或加载了与当前端口不匹配的执行器。看 SMAPI 控制台。',
       })
     }
   }
@@ -149,18 +162,36 @@ export async function runDoctor(paths) {
           },
     )
 
-    const modDir = join(paths.gameDir, 'Mods', 'NagiBridge')
-    if (existsSync(modDir)) {
+    // 支持两种执行器：JunimoBridge（默认，7850）与 NagiBridge-Remix（兼容路径，7842）。
+    // 两者任一就位即可 —— 早先这里只查 NagiBridge，导致按文档只装 JunimoBridge 的人
+    // 反而被报「目录不完整」，是假警报。
+    const executors = [
+      { dir: 'JunimoBridge', dll: 'JunimoBridge.dll', title: 'JunimoBridge（默认执行器，7850）', url: 'https://github.com/mlkgrnt/junimo-bridge/releases' },
+      { dir: 'NagiBridge', dll: 'NagiBridge.dll', title: 'NagiBridge-Remix（兼容路径，7842）', url: 'https://github.com/pendel001/NagiBridge-Remix' },
+    ]
+    let foundExecutor = false
+    for (const ex of executors) {
+      const modDir = join(paths.gameDir, 'Mods', ex.dir)
+      if (!existsSync(modDir)) continue
+      foundExecutor = true
       checks.push(
-        existsSync(join(modDir, 'NagiBridge.dll'))
-          ? { verdict: 'ok', title: 'NagiBridge-Remix', detail: modDir }
+        existsSync(join(modDir, ex.dll))
+          ? { verdict: 'ok', title: ex.title, detail: modDir }
           : {
               verdict: 'fail',
-              title: 'NagiBridge 目录不完整',
-              detail: `${modDir} 缺 NagiBridge.dll`,
-              fix: '重新解压 NagiBridge-Remix 的 zip，把 NagiBridge\\ 整个文件夹放进 Mods\\。',
+              title: `${ex.dir} 目录不完整`,
+              detail: `${modDir} 缺 ${ex.dll}`,
+              fix: `重新下载 ${ex.url} 的压缩包，把 ${ex.dir}\\ 整个文件夹放进 Mods\\。`,
             },
       )
+    }
+    if (!foundExecutor) {
+      checks.push({
+        verdict: 'warn',
+        title: '没找到执行器 mod',
+        detail: 'Mods\\ 下既没有 JunimoBridge\\ 也没有 NagiBridge\\',
+        fix: '下载 https://github.com/mlkgrnt/junimo-bridge/releases 的 zip，解压到 <游戏目录>\\Mods\\（得到 Mods\\JunimoBridge\\）。',
+      })
     }
   } else {
     checks.push({
