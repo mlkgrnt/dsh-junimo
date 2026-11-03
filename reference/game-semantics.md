@@ -104,9 +104,9 @@
 
 | 端点 | body | 说明 |
 |---|---|---|
-| `POST /input/hold` | `{"buttons":["use"],"ms":800}` | 按住若干毫秒后自动松开；`buttons` 取值 `use`（=左键）、`left/right/up/down`（方向键），可组合 |
+| `POST /input/hold` | `{"buttons":["use"],"ms":800}` | 按住若干毫秒后自动松开；`buttons` 取值 `use`（=左键）、`left/right/up/down`（**语义方向**，由执行器解析成游戏内当前绑定，默认 WASD），可组合 |
 | `POST /input/release` | — | 立刻全松 |
-| `GET /input/state` | — | `holding` / `msLeft` / `keys`（我们按住的）/ `observedKeys`（**游戏实际读到的**） |
+| `GET /input/state` | — | `holding` / `msLeft` / `keys`（我们按住的）/ `observedKeys`（**游戏实际读到的**）；0.1.1 起另有 `injectedKeys`（累计注入计数，在涨=补丁在工作）/ `hasKeyboardFocus` / `isMainInstance` |
 
 **实测边界（2026-11-04，JunimoBridge 0.1.1）**：
 
@@ -128,6 +128,7 @@
 - **「点了没反应」先查 `foreground`/`isActive`** —— SDV 失焦会暂停，此时坐标再准也没用。
 - 截屏/点击换算用 `viewport`（物理像素），**别用 Win32 `GetWindowRect` 的逻辑坐标**（本机 DPI 175%，差 1.75 倍）。
 - `menu.type` 直接给菜单类名（`DialogueBox` / `Chest` / `ShopMenu` / `null`），比 `menu_read` 的渲染文本更结构化。
+- **0.1.1 起 `menu` 还带 `fields`**：菜单内部字段原样摊开（如 `GameMenu` 的 `currentTab` / `hoverText` / `xPositionOnScreen` / `width`），这是驱动**复杂 UI**（商店翻页、博物馆捐赠、制作菜单切标签）的关键 —— 以前只能靠坐标瞎点。
 - ⚠️ 实测 `DialogueBox` 的 `components` 是**空数组**（对话不是控件型菜单）——选项仍走 `story` / `menu_read`。
 
 ### A.3 其它常用原始端点
