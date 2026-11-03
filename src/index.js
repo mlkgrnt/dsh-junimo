@@ -112,7 +112,7 @@ export function apply(ctx) {
     defineTool({
       name: 'junimo_doctor',
       description:
-        '诊断星露谷链路：exe 是否存在、7842 端口是否在听、mod 是否响应、是否已进档、游戏目录/SMAPI/mod 文件是否就位、SMAPI 日志有无报错。只读，不修任何东西。开始操作游戏前先跑这个。',
+        '诊断星露谷链路：exe 是否存在、7850 端口是否在听、mod 是否响应、是否已进档、游戏目录/SMAPI/mod 文件是否就位、SMAPI 日志有无报错。只读，不修任何东西。开始操作游戏前先跑这个。',
       parameters: {},
       output: textOutput,
       async execute() {
@@ -141,7 +141,7 @@ export function apply(ctx) {
     defineTool({
       name: 'junimo_game_launch',
       description:
-        '启动游戏（用 StardewModdingAPI.exe，不是 Steam——走 Steam 加载不到 mod），然后等 7842 响应。游戏已在跑时不会重复启动。',
+        '启动游戏（用 StardewModdingAPI.exe，不是 Steam——走 Steam 加载不到 mod），然后等 7850 响应。游戏已在跑时不会重复启动。',
       parameters: {
         waitSeconds: {
           type: 'number',
@@ -155,7 +155,7 @@ export function apply(ctx) {
 
         const { host, port } = splitApiUrl(paths.apiUrl)
         if (await probePort(host, port)) {
-          return '7842 已经在监听，游戏应该已经在跑了（worldReady 用 junimo_doctor 看）。不重复启动。'
+          return '7850 已经在监听，游戏应该已经在跑了（worldReady 用 junimo_doctor 看）。不重复启动。'
         }
         const seconds = typeof args?.waitSeconds === 'number' ? args.waitSeconds : 90
         const res = await launchGame(paths, seconds * 1000)

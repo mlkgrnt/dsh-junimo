@@ -3,7 +3,7 @@
  * 没法自己启动自己、也没法把自己的窗口提到前台。
  *
  *   junimo_focus       —— 切前台（SDV 失焦会暂停，菜单点击不生效）
- *   junimo_game_launch —— 起 SMAPI 进程并等 7842 起来
+ *   junimo_game_launch —— 起 SMAPI 进程并等 7850 起来
  *   junimo_load_save   —— 聚焦 + 点 Load + 点存档格 + 等 worldReady
  *
  * 进档的难点是**时机**不是坐标：TitleMenu.receiveLeftClick 在淡入/转场期间
@@ -208,7 +208,7 @@ export async function launchGame(paths, timeoutMs = 90_000) {
   }
 
   // 等它真正活下来再等端口：被宿主 Job 回收的情况通常 1~2 秒内就没了，
-  // 不校验的话会白等满整个超时，还报成"7842 没响应"，误导排查方向。
+  // 不校验的话会白等满整个超时，还报成"7850 没响应"，误导排查方向。
   await sleep(2500)
   if (!(await anyStardewProcess())) {
     return {
@@ -225,7 +225,7 @@ export async function launchGame(paths, timeoutMs = 90_000) {
   if (!waited.ready) {
     return {
       ok: false,
-      detail: `进程已拉起，但 ${Math.round(waited.waitedMs / 1000)}s 内 7842 没响应。看 SMAPI 控制台是否报 mod 冲突。`,
+      detail: `进程已拉起，但 ${Math.round(waited.waitedMs / 1000)}s 内 7850 没响应。看 SMAPI 控制台是否报 mod 冲突。`,
     }
   }
   return {

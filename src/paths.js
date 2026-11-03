@@ -17,7 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 export const packageRoot = resolve(here, '..')
 
 /** mod 的 HTTP 端点。**必须**用 localhost，127.0.0.1 会被 Windows HTTP.sys 拒。 */
-export const DEFAULT_API_URL = 'http://localhost:7842'
+export const DEFAULT_API_URL = 'http://localhost:7850'
 
 /**
  * 当前平台能否使用**随包/官方渠道**的二进制。

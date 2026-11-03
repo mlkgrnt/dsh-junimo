@@ -7,7 +7,7 @@
 ## 数据流
 
 ```
-你 → mcp__junimo__<工具> → junimo-mcp.exe → HTTP(localhost:7842) → NagiBridge-Remix mod → 游戏
+你 → mcp__junimo__<工具> → junimo-mcp.exe → HTTP(localhost:7850) → 执行器 mod（JunimoBridge）→ 游戏
 ```
 
 时序等待、游戏侧校验、失败回滚都在 exe 内部完成。你不需要、**也不应该**自己加延时。
@@ -15,7 +15,7 @@
 ## 开工前 30 秒自检
 
 1. **exe 在吗** → `junimo_doctor`
-2. **游戏在跑吗** → `junimo_doctor` 会看 7842 端口；没起就 `junimo_game_launch`
+2. **游戏在跑吗** → `junimo_doctor` 会看 7850 端口；没起就 `junimo_game_launch`
 3. **进档了吗** → `junimo_doctor` 报 `worldReady=false` 就 `junimo_load_save`
 4. **工具齐吗** → 应有 37 个 `mcp__junimo__*`；少了说明 exe 是旧版或没挂上
 

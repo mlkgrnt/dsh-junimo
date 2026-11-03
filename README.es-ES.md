@@ -24,7 +24,7 @@ El punto 3 no puede hacerlo ninguna herramienta MCP: el mod se ejecuta dentro de
 ## Arquitectura
 
 ```
-modelo ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-mcp.exe ──HTTP──▶ NagiBridge-Remix ──▶ juego
+modelo ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-mcp.exe ──HTTP──▶ mod ejecutor ──▶ juego
                                  ▲                          ▲
                           montado por dsh-junimo      reutilizado tal cual, sin modificar
                           + 4 herramientas nativas
@@ -48,11 +48,11 @@ modelo ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-
 | Juego | Stardew Valley 1.6.x |
 | SMAPI | 4.x (`junimo_game_launch` lo usa para iniciar el juego) |
 | Shell POSIX | bash de Git for Windows o WSL, usado para lanzar el juego. Si falta, se recurre a `cmd`: el juego arranca igual, pero aparece una ventana de consola de SMAPI adicional |
-| Mod ejecutor | [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix), instalado en `Mods/NagiBridge/` |
+| Mod ejecutor | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.1.0**, instalado en `Mods/JunimoBridge/` (puerto 7850); [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix) también sirve (`Mods/NagiBridge/`, 7842) |
 
 Los pasos de instalación de SMAPI y del mod están en el [AGENTS.md de Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP/blob/main/AGENTS.md).
 
-> NagiBridge-Remix se distribuye bajo PolyForm Noncommercial 1.0.0; el uso personal y no comercial es gratuito. Este proyecto no incluye su código. El NagiBridge original y Remix usan UniqueID distintos, así que tener ambos instalados hace que compitan por el puerto 7842: saca el directorio antiguo antes de cambiar.
+> [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) tiene licencia MIT (es el repositorio hermano de este proyecto: solo los endpoints que usamos de verdad, con payloads alineados a NagiBridge). NagiBridge-Remix se distribuye bajo PolyForm Noncommercial 1.0.0; el uso personal y no comercial es gratuito. Este proyecto no incluye código de ningún mod. El NagiBridge original y Remix usan UniqueID distintos, así que tener ambos instalados hace que compitan por el puerto 7842: saca el directorio antiguo antes de cambiar.
 
 ## Instalación
 
@@ -66,7 +66,7 @@ dsh plugin --profile web add github:mlkgrnt/dsh-junimo
 
 `dsh plugin add` inicializa el profile y añade este paquete a `dsh.profile.bundles`. Surte efecto tras reiniciar dsh.
 
-Tras instalar, ejecuta `junimo_doctor` para comprobar toda la cadena. Informa la ruta y la versión del ejecutable, el estado del puerto 7842, la respuesta del mod, la disponibilidad de la partida, la integridad de los archivos de SMAPI y NagiBridge, y las líneas de error del log de SMAPI.
+Tras instalar, ejecuta `junimo_doctor` para comprobar toda la cadena. Informa la ruta y la versión del ejecutable, el estado del puerto 7850, la respuesta del mod, la disponibilidad de la partida, la integridad de los archivos de SMAPI y del mod ejecutor, y las líneas de error del log de SMAPI.
 
 > Si al instalar desde GitHub te avisa de que un script de compilación no está autorizado, añade la clave de paquete que te indique pnpm a `allowBuilds` en el `pnpm-workspace.yaml` del profile. Este paquete no tiene paso de compilación, así que rara vez ocurre.
 
@@ -78,7 +78,7 @@ Tras instalar, ejecuta `junimo_doctor` para comprobar toda la cadena. Informa la
 |---|---|---|
 | `JUNIMO_MCP_BIN` | `bin/junimo-mcp.exe` incluido | Sustituye el ejecutable incluido; útil para actualizar, revertir o usar un binario propio |
 | `STARDEW_GAME_DIR` | detección automática | Directorio que contiene `Stardew Valley.exe`; si no se define, se prueban las bibliotecas de Steam y las rutas habituales |
-| `STARDEW_API_URL` | `http://localhost:7842` | Endpoint del mod. Debe ser `localhost`; el sistema rechaza `127.0.0.1` |
+| `STARDEW_API_URL` | `http://localhost:7850` | Endpoint del mod. Debe ser `localhost`; el sistema rechaza `127.0.0.1` |
 | `STARDEW_AUTO_MENU` | `1` | Se pasa al ejecutable: responde automáticamente a diálogos sin opciones |
 | `STARDEW_AUTO_EVENT` | sin definir | Se pasa al ejecutable: omite automáticamente eventos de la historia, desactivado por defecto |
 
@@ -98,7 +98,7 @@ El `cordis.patch.yml` de un profile sobrescribe las filas del plugin por `id`. U
         transport: stdio
         command: 'D:\tools\junimo-mcp.exe'
         args: []
-        env: { STARDEW_API_URL: 'http://localhost:7842' }
+        env: { STARDEW_API_URL: 'http://localhost:7850' }
         cwd: 'D:\tools'
         toolCallTimeoutMs: 180000
         failOnStartupError: true
@@ -112,7 +112,7 @@ El `cordis.patch.yml` de un profile sobrescribe las filas del plugin por `id`. U
 |---|---|
 | `junimo_doctor` | Diagnóstico de la cadena. Solo lectura, no repara nada. Conviene llamarla antes de tocar el juego |
 | `junimo_focus` | Trae la ventana del juego al frente. SDV se pausa al perder el foco, y con el juego pausado los clics y las operaciones de menú no hacen nada |
-| `junimo_game_launch` | Inicia el juego mediante `StardewModdingAPI.exe` y espera respuesta en el 7842; no hace nada si ya está en marcha. SMAPI es un programa de consola y se cierra al instante si se lanza directamente, así que se inicia primero a través de bash y solo se recurre a `cmd` si no hay bash |
+| `junimo_game_launch` | Inicia el juego mediante `StardewModdingAPI.exe` y espera respuesta en el 7850; no hace nada si ya está en marcha. SMAPI es un programa de consola y se cierra al instante si se lanza directamente, así que se inicia primero a través de bash y solo se recurre a `cmd` si no hay bash |
 | `junimo_load_save` | Enfoca la ventana → pulsa Load → pulsa la ranura → sondea hasta `worldReady`; reintenta la ronda completa si falla |
 
 Lo difícil de `junimo_load_save` es el momento, no las coordenadas. `TitleMenu.receiveLeftClick` descarta clics en silencio durante los fundidos y las transiciones, así que la implementación es «esperar a que la interfaz se estabilice → pulsar → decidir con `worldReady` → reintentar la ronda completa». Las coordenadas corresponden a la pantalla de título en modo ventana a 1280×720.
@@ -141,10 +141,10 @@ Debajo del calendario muestra también el **próximo festival y su cuenta atrás
 
 ### De dónde salen los datos
 
-El navegador **no puede llegar** a `http://localhost:7842`: la página de escritorio se ejecuta bajo el esquema `dsh-app://`, así que una llamada directa es a la vez de otro origen y queda bloqueada por ese esquema. Por eso el plugin hace de proxy desde **dentro del proceso anfitrión**:
+El navegador **no puede llegar** a `http://localhost:7850`: la página de escritorio se ejecuta bajo el esquema `dsh-app://`, así que una llamada directa es a la vez de otro origen y queda bloqueada por ese esquema. Por eso el plugin hace de proxy desde **dentro del proceso anfitrión**:
 
 ```
-navegador ──GET /junimo/panel──▶ host de dsh (ruta webServer de este plugin) ──HTTP──▶ NagiBridge /state ──▶ juego
+navegador ──GET /junimo/panel──▶ host de dsh (ruta webServer de este plugin) ──HTTP──▶ mod ejecutor /state ──▶ juego
 ```
 
 `src/panel.js` convierte el estado en chino que el mod ofrece al modelo en un DTO pequeño que el front end puede pintar directamente: todos los campos numéricos se normalizan (el mod devuelve `null` o cadenas en algunas fases) y los campos ausentes se degradan a valores vacíos en lugar de lanzar una excepción.
@@ -187,7 +187,7 @@ La versión incluida actualmente está en `bin/BUNDLED_VERSION`.
 ```
 src/index.js    Entrada del plugin: servicio junimoPaths, sección de prompt, registro de las 4 herramientas
 src/paths.js    Resolución y sondeo del ejecutable / directorio del juego / recursos del paquete
-src/api.js      Cliente HTTP mínimo para NagiBridge (comprobación y apoyos de sincronización)
+src/api.js      Cliente HTTP mínimo para el mod ejecutor (comprobación y apoyos de sincronización)
 src/doctor.js   Comprobaciones y renderizado de junimo_doctor
 src/game.js     Foco, lanzamiento, carga de partida
 src/panel.js    DTO del panel: convierte el /state del mod en algo que el front end pinta directamente
@@ -231,7 +231,7 @@ El plugin hoy **solo funciona en Windows**, pero las razones se reparten en tres
 |---|---|---|
 | Núcleo OCaml (lo que contiene `junimo-mcp.exe`) | **Multiplataforma, con artefactos publicados para macOS / Linux** | Sus dependencias son solo `yojson` + `unix` y el código no tiene ramas por plataforma; CI supera todas las aserciones sin juego en runners Linux / macOS / Windows; cada artefacto se vuelve a probar en su plataforma antes de publicarse |
 | Este plugin (lanzamiento de procesos, foco de ventana, sondeo de rutas) | **Solo Windows** | El foco usa user32, el lanzamiento pasa por PowerShell y bash, y las bibliotecas de Steam se buscan por letra de unidad |
-| Mod ejecutor (NagiBridge-Remix) | **Parcialmente solo Windows** | `/press_key` y `/click_tile` usan `keybd_event` / `mouse_event`; `/click` usa llamadas en proceso cuando hay un menú abierto o se pasa `no_mouse`, y de por sí es portable |
+| Mod ejecutor (JunimoBridge / NagiBridge-Remix) | **Parcialmente solo Windows** | `/press_key` y `/click_tile` usan `keybd_event` / `mouse_event`; `/click` usa llamadas en proceso cuando hay un menú abierto o se pasa `no_mouse`, y de por sí es portable |
 
 El plugin incluye solo el `junimo-mcp.exe` de Windows. Quien use macOS o Linux puede bajar el artefacto correspondiente de [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) y apuntar `JUNIMO_MCP_BIN` hacia él: eso cubre la mayoría de las 37 herramientas. En sistemas que no son Windows, `junimo_doctor` muestra la URL de descarga de esa plataforma en lugar de un vago «no se encuentra el ejecutable».
 
@@ -241,8 +241,8 @@ Las herramientas **propias del plugin** `junimo_focus` / `junimo_game_launch` / 
 
 - **El plugin hoy solo funciona en Windows.** El foco de ventana, el lanzamiento de procesos y la carga de partida dependen de PowerShell y user32. Pero **Junimo-MCP ya ofrece binarios para macOS / Linux**, que puedes descargar y usar, o portar las tres herramientas del plugin según necesites.
 - **Las coordenadas de carga asumen la pantalla de título a 1280×720.** Verificado en máquina real en modo ventana; otras resoluciones requieren recalcularlas, ver los comentarios de `src/game.js`.
-- **El `junimo-mcp.exe` incluido es un artefacto de release de Junimo-MCP** (MIT). Este proyecto no incluye NagiBridge-Remix.
+- **El `junimo-mcp.exe` incluido es un artefacto de release de Junimo-MCP** (MIT). Este proyecto no incluye código de ningún mod.
 
 ## Licencia
 
-MIT, ver [LICENSE](./LICENSE). El `junimo-mcp.exe` incluido y NagiBridge-Remix siguen cada uno su propia licencia.
+MIT, ver [LICENSE](./LICENSE). El `junimo-mcp.exe` incluido y el mod ejecutor siguen cada uno su propia licencia.

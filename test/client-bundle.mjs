@@ -349,7 +349,7 @@ const failed = renderCard({
   block: {
     kind: 'tool-result', seq: 2, time: 1200, callId: 'c1',
     call: { name: 'mcp__junimo__get_state', argsRaw: '{}' }, callTime: 1000,
-    content: [{ type: 'text', text: '连接被拒绝：7842' }], isError: true, subCalls: [],
+    content: [{ type: 'text', text: '连接被拒绝：7850' }], isError: true, subCalls: [],
   },
 })
 assert.ok(failed.join('').includes('状态读取失败'))

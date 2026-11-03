@@ -76,12 +76,12 @@ export async function probePort(host, port, timeoutMs = 1500) {
   })
 }
 
-/** 从 `localhost:7842` 里取出 host/port，给 probePort 用。 */
+/** 从 `localhost:7850` 里取出 host/port，给 probePort 用。 */
 export function splitApiUrl(apiUrl) {
   try {
     const url = new URL(apiUrl)
     return { host: url.hostname, port: url.port ? Number(url.port) : 80 }
   } catch {
-    return { host: 'localhost', port: 7842 }
+    return { host: 'localhost', port: 7850 }
   }
 }

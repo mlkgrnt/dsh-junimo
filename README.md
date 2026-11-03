@@ -24,7 +24,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，�
 ## 架构
 
 ```
-模型 ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-mcp.exe ──HTTP──▶ NagiBridge-Remix ──▶ 游戏
+模型 ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-mcp.exe ──HTTP──▶ 执行器 mod ──▶ 游戏
                               ▲                          ▲
                         dsh-junimo 装配             原样复用，未修改
                         + 4 个原生工具
@@ -48,11 +48,11 @@ DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，�
 | 游戏 | Stardew Valley 1.6.x |
 | SMAPI | 4.x（`junimo_game_launch` 依赖它启动） |
 | POSIX shell | Git for Windows 或 WSL 的 bash，用于启动游戏。缺失时退回 `cmd`，可正常启动，但会多出一个 SMAPI 控制台窗口 |
-| 执行器 mod | [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix)，安装至 `Mods/NagiBridge/` |
+| 执行器 mod | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.1.0**，安装至 `Mods/JunimoBridge/`（端口 7850）；也兼容 [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix)（`Mods/NagiBridge/`，7842） |
 
 SMAPI 与 mod 的安装步骤见 [Junimo-MCP 的 AGENTS.md](https://github.com/mlkgrnt/Junimo-MCP/blob/main/AGENTS.md)。
 
-> NagiBridge-Remix 采用 PolyForm Noncommercial 1.0.0 许可，个人与非商业用途免费。本项目不打包其代码。原版 NagiBridge 与 Remix 的 UniqueID 不同，同时安装会争用 7842 端口，切换时需先移出旧目录。
+> [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) 采用 MIT 许可（本项目的姊妹仓库，只实现真正在用的那批端点，报文与 NagiBridge 对齐）。NagiBridge-Remix 采用 PolyForm Noncommercial 1.0.0，个人与非商业用途免费。本项目不打包任何 mod 代码。原版 NagiBridge 与 Remix 的 UniqueID 不同，同时安装会争用 7842 端口，切换时需先移出旧目录。
 
 ## 安装
 
@@ -66,7 +66,7 @@ dsh plugin --profile web add github:mlkgrnt/dsh-junimo
 
 `dsh plugin add` 会初始化 profile，并将本包追加至 `dsh.profile.bundles`。重启 dsh 后生效。
 
-安装后执行 `junimo_doctor` 完成链路检查。该工具输出 exe 路径与版本、7842 端口状态、mod 响应、存档就绪状态、SMAPI 与 NagiBridge 文件完整性，以及 SMAPI 日志中的错误行。
+安装后执行 `junimo_doctor` 完成链路检查。该工具输出 exe 路径与版本、7850 端口状态、mod 响应、存档就绪状态、SMAPI 与执行器 mod 文件完整性，以及 SMAPI 日志中的错误行。
 
 > 从 GitHub 安装时若提示构建脚本未授权，将 pnpm 给出的包键加入 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds`。本包不含构建步骤，通常不会触发。
 
@@ -78,7 +78,7 @@ dsh plugin --profile web add github:mlkgrnt/dsh-junimo
 |---|---|---|
 | `JUNIMO_MCP_BIN` | 内置 `bin/junimo-mcp.exe` | 覆盖内置 exe，用于升级、回退或使用自编译版本 |
 | `STARDEW_GAME_DIR` | 自动探测 | 含 `Stardew Valley.exe` 的目录；未设置时依次尝试 Steam 库与常见安装路径 |
-| `STARDEW_API_URL` | `http://localhost:7842` | mod 端点。必须使用 `localhost`，`127.0.0.1` 会被系统拒绝 |
+| `STARDEW_API_URL` | `http://localhost:7850` | mod 端点。必须使用 `localhost`，`127.0.0.1` 会被系统拒绝 |
 | `STARDEW_AUTO_MENU` | `1` | 透传给 exe：自动应答无选项对话 |
 | `STARDEW_AUTO_EVENT` | 未设置 | 透传给 exe：自动跳过剧本事件，默认关闭 |
 
@@ -98,7 +98,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
         transport: stdio
         command: 'D:\tools\junimo-mcp.exe'
         args: []
-        env: { STARDEW_API_URL: 'http://localhost:7842' }
+        env: { STARDEW_API_URL: 'http://localhost:7850' }
         cwd: 'D:\tools'
         toolCallTimeoutMs: 180000
         failOnStartupError: true
@@ -112,7 +112,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 |---|---|
 | `junimo_doctor` | 链路诊断。只读，不执行修复。操作游戏前应首先调用 |
 | `junimo_focus` | 将游戏窗口置前。SDV 失焦会自动暂停，此时点击与菜单操作均不生效 |
-| `junimo_game_launch` | 通过 `StardewModdingAPI.exe` 启动游戏并等待 7842 响应；已在运行时不会重复启动。SMAPI 是控制台程序，直接 spawn 会秒退，因此优先经 bash 启动，找不到 bash 才退回 `cmd` |
+| `junimo_game_launch` | 通过 `StardewModdingAPI.exe` 启动游戏并等待 7850 响应；已在运行时不会重复启动。SMAPI 是控制台程序，直接 spawn 会秒退，因此优先经 bash 启动，找不到 bash 才退回 `cmd` |
 | `junimo_load_save` | 聚焦窗口 → 点击 Load → 点击存档格 → 轮询至 `worldReady`，失败时整轮重试 |
 
 `junimo_load_save` 的难点在于时机而非坐标。`TitleMenu.receiveLeftClick` 在淡入与转场期间会静默丢弃点击，因此实现采用「等待界面稳定 → 点击 → 以 `worldReady` 判定 → 整轮重试」。坐标基于 1280×720 窗口模式的标题界面。
@@ -141,10 +141,10 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 
 ### 数据来源
 
-浏览器**打不通** `http://localhost:7842`：桌面端页面运行在 `dsh-app://` 协议下，直连既不跨源，也会被该自定义协议拦下。因此面板数据由插件在**宿主进程内**代理：
+浏览器**打不通** `http://localhost:7850`：桌面端页面运行在 `dsh-app://` 协议下，直连既不跨源，也会被该自定义协议拦下。因此面板数据由插件在**宿主进程内**代理：
 
 ```
-浏览器 ──GET /junimo/panel──▶ dsh 宿主（本插件的 webServer 路由） ──HTTP──▶ NagiBridge /state ──▶ 游戏
+浏览器 ──GET /junimo/panel──▶ dsh 宿主（本插件的 webServer 路由） ──HTTP──▶ 执行器 mod /state ──▶ 游戏
 ```
 
 `src/panel.js` 把 mod 面向模型的中文长文本状态收成前端可直接渲染的小 DTO：数值字段一律兜住类型（mod 在部分阶段会给 `null` 或字符串），缺字段退化为空值而不抛错。
@@ -187,7 +187,7 @@ node scripts/sync-binary.mjs v3.2.1   # 或锁定指定 tag
 ```
 src/index.js    插件入口：junimoPaths 服务、提示词段落、4 个工具注册
 src/paths.js    exe / 游戏目录 / 包内资源的解析与探测
-src/api.js      NagiBridge 的最小 HTTP 客户端（探活与时序兜底）
+src/api.js      执行器 mod 的最小 HTTP 客户端（探活与时序兜底）
 src/doctor.js   junimo_doctor 的检查项与渲染
 src/game.js     聚焦、启动、读档
 src/panel.js    季历面板 DTO：把 mod 的 /state 收成前端可直接渲染的形状
@@ -231,7 +231,7 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 |---|---|---|
 | OCaml 内核（`junimo-mcp.exe` 的内容） | **已跨平台，且已发布 macOS / Linux 产物** | 依赖只有 `yojson` + `unix`，源码无平台分支；CI 在 Linux / macOS / Windows 三个 runner 上跑通全部免游戏断言；产物发布前会在各自平台上再跑一遍 |
 | 本插件（进程启动、窗口聚焦、路径探测） | **仅 Windows** | 聚焦用 user32，启动走 PowerShell 与 bash，Steam 库按盘符探测 |
-| 执行器 mod（NagiBridge-Remix） | **部分仅 Windows** | `/press_key` 与 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有菜单或带 `no_mouse` 时走进程内调用，本身可移植 |
+| 执行器 mod（JunimoBridge / NagiBridge-Remix） | **部分仅 Windows** | `/press_key` 与 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有菜单或带 `no_mouse` 时走进程内调用，本身可移植 |
 
 本插件随包只带 Windows 的 `junimo-mcp.exe`。macOS / Linux 用户可以从 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取对应产物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指过来即可使用 37 个工具中的大部分；`junimo_doctor` 在非 Windows 上会直接给出该平台对应的下载地址，而不是笼统地报「找不到 exe」。
 
@@ -241,8 +241,8 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 
 - **插件目前仅 Windows 可用**。窗口聚焦、进程启动与读档依赖 PowerShell 与 user32。但 **Junimo-MCP 已有 macOS / Linux 二进制**，可自行下载使用或按需移植插件三件套。
 - **读档坐标绑定 1280×720 标题界面**。已在窗口模式实机验证；其它分辨率需换算，参见 `src/game.js` 注释。
-- **内置的 `junimo-mcp.exe` 为 Junimo-MCP 的发布产物**（MIT）。本项目不打包 NagiBridge-Remix。
+- **内置的 `junimo-mcp.exe` 为 Junimo-MCP 的发布产物**（MIT）。本项目不打包任何 mod 代码。
 
 ## 许可
 
-MIT，见 [LICENSE](./LICENSE)。内置的 `junimo-mcp.exe` 与 NagiBridge-Remix 各自遵循其原许可。
+MIT，见 [LICENSE](./LICENSE)。内置的 `junimo-mcp.exe` 与执行器 mod 各自遵循其原许可。
