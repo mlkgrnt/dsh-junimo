@@ -64,6 +64,8 @@
 | 关菜单 | `menu_close` | 睡完的 SaveGameMenu、夜里的 ShippingMenu 必须关掉才能继续 |
 | 选中物品 / 用手持 / 挥工具 / 与面前格交互 | `select_item` / `use_held` / `swing_tool` / `interact` | 播种放置用 `use_held`；对话 NPC 用 `interact` |
 
+> 37 个工具**覆盖不到**的能力（按住输入=蓄力/抛竿、窗口与焦点探针、结构化菜单）见 [附录 A](#附录-a原始端点逃生通道工具覆盖不到时)。
+
 ## 一个标准工作日
 
 1. `get_state` — 看日期、天气、体力、位置（速报行就够）
@@ -92,3 +94,56 @@
 - **`skip` 不会把事件标记成已看**：未落盘的一天里，重新进入触发区会反复触发同一事件。要么走完，要么 `sleep` 翻日。
 - **剧情不可回放**：`skip` 掉的内容不会补回来，游戏不提供重看。
 - **`/buy` 按售价 ×2 计价**：没有商店界面的便利端点，不是正常价格。
+
+## 附录 A：原始端点逃生通道（工具覆盖不到时）
+
+执行器 mod 还有一批**工具层没暴露**的原语。直连 `http://localhost:7850`（必须 localhost，
+`127.0.0.1` 会被拒），最短的调用方式是本仓库的 `node junimo-call.mjs --raw GET /screen`。
+
+### A.1 按住输入（蓄力 / 抛竿）
+
+| 端点 | body | 说明 |
+|---|---|---|
+| `POST /input/hold` | `{"buttons":["use"],"ms":800}` | 按住若干毫秒后自动松开；`buttons` 取值 `use`（=左键）、`left/right/up/down`（方向键），可组合 |
+| `POST /input/release` | — | 立刻全松 |
+| `GET /input/state` | — | `holding` / `msLeft` / `keys`（我们按住的）/ `observedKeys`（**游戏实际读到的**） |
+
+**实测边界（2026-11-04，JunimoBridge 0.1.0）**：
+
+- ✅ `use` 真生效：拿锄头 hold 500ms，目标格**真的被锄了**（`/surroundings` 里 HoeDirt 0→1）。
+  这是**升级工具蓄力**（铜/钢/铱扩范围）和**钓鱼抛竿**的唯一途径。
+- ⚠️ 方向键：`observedKeys` 显示游戏读到了，但**玩家不移动**（`isMoving` 恒 false）；
+  未调用 `/input/release` 的情况下，连续 hold 也**只有第一次**会改朝向。
+- ⚠️ **两次 hold 之间务必 `POST /input/release`**，否则后续 hold 会被忽略。
+- 结论：当前版本把 `hold` 当**「点一下」**用是可靠的；当「持续按住」用（走路 / 长按蓄力）还不成立。
+
+### A.2 窗口 / 视口 / 菜单探针
+
+| 端点 | 说明 |
+|---|---|
+| `GET /screen` | `viewport`（**物理像素**窗口矩形）、`uiViewport`、`mouse`、`foreground`/`isActive`、`menu{open,type,components,subMenu}` |
+| `GET /probe/active_menu` | 只要菜单部分，返回 `{ok,open,menu}` |
+
+- **「点了没反应」先查 `foreground`/`isActive`** —— SDV 失焦会暂停，此时坐标再准也没用。
+- 截屏/点击换算用 `viewport`（物理像素），**别用 Win32 `GetWindowRect` 的逻辑坐标**（本机 DPI 175%，差 1.75 倍）。
+- `menu.type` 直接给菜单类名（`DialogueBox` / `Chest` / `ShopMenu` / `null`），比 `menu_read` 的渲染文本更结构化。
+- ⚠️ 实测 `DialogueBox` 的 `components` 是**空数组**（对话不是控件型菜单）——选项仍走 `story` / `menu_read`。
+
+### A.3 其它常用原始端点
+
+| 端点 | 用途 | 工具层对应 |
+|---|---|---|
+| `GET /status` | `server`/`version`/`worldReady`/`tick`/`uptimeMs`/`pending` | `junimo_doctor` 内部用 |
+| `POST /position {x,y}` | 瞬移（`warp` 落点不对劲时兜底） | 无 |
+| `POST /stop` | 中止跨帧操作并结账等待中的请求 | 无 |
+| `POST /refill` | 灌满水壶 | 无（工具只在水壶空时自动补） |
+| `POST /key {key,count}` | `confirm` / `skip` / `down` 三个语义键 | `press_key` |
+| `POST /tool_area {operation,x1,y1,x2,y2}` | 矩形批量锄/浇 | `till` / `water` |
+
+### A.4 0.1.0 已知的硬毛病（排查先看这里）
+
+- **`press_key` 打不开菜单**：实测 `menu` / `e` / `inventory` / `tab` 都回「已按键」，
+  但 `/probe` 与 `menu_read` 都报无菜单。需要开菜单就用 `interact` 触发（开箱/说话/开门）。
+  `confirm` / `skip` 这类语义键未在新版复测，用前先验证一次。
+- **`interact` 回执里的「交互面向格 (0,0)」不可信**：动作确实触发在正确格，只是回执把坐标算成了 0,0。
+- 无菜单时：`/screen` 的 `menu` 是 `{"open":false,"type":""}`，而 `/probe/active_menu` 是 `menu:null` —— 两者形状不同，写解析别混。
