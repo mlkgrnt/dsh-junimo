@@ -19,7 +19,7 @@ El plugin asume cuatro responsabilidades:
 
 El punto 3 no puede hacerlo ninguna herramienta MCP: el mod se ejecuta dentro del proceso del juego, así que no puede iniciar su propio proceso ni traer su propia ventana al frente. El punto 4 se implementa con una ruta en el host más un bundle de cliente ya compilado; ver «[Panel del calendario de estación](#panel-del-calendario-de-estación)».
 
-`junimo-mcp.exe` va incluido (`bin/`, v3.2.1, 6 MB). Basta con instalar el plugin; no hay que descargar ningún binario aparte.
+`junimo-mcp.exe` va incluido (`bin/`, v3.2.2, 6 MB). Basta con instalar el plugin; no hay que descargar ningún binario aparte.
 
 ## Arquitectura
 
@@ -173,7 +173,7 @@ El bundle de cliente se declara con el campo `dsh.client` de `package.json` (`pl
 
 ```bash
 node scripts/sync-binary.mjs          # toma la última release de Junimo-MCP
-node scripts/sync-binary.mjs v3.2.1   # o fija un tag concreto
+node scripts/sync-binary.mjs v3.2.2   # o fija un tag concreto
 ```
 
 El script descarga el ejecutable y el SHA-256 oficial, los verifica localmente y solo entonces sobrescribe `bin/`, actualizando a la vez `bin/BUNDLED_VERSION`. Después hay que hacer `git add bin/` y commit.

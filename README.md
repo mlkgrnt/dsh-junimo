@@ -19,7 +19,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，�
 
 第 3 项无法由 MCP 工具实现——mod 运行于游戏进程内部，不能启动自身进程，也不能将自身窗口置前。第 4 项由一条宿主路由加一份预构建的客户端 bundle 实现，见「[季历面板](#季历面板)」。
 
-`junimo-mcp.exe` 已随包内置（`bin/`，v3.2.1，6 MB），安装插件后无需另行获取二进制。
+`junimo-mcp.exe` 已随包内置（`bin/`，v3.2.2，6 MB），安装插件后无需另行获取二进制。
 
 ## 架构
 
@@ -173,7 +173,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 
 ```bash
 node scripts/sync-binary.mjs          # 取 Junimo-MCP 的最新 release
-node scripts/sync-binary.mjs v3.2.1   # 或锁定指定 tag
+node scripts/sync-binary.mjs v3.2.2   # 或锁定指定 tag
 ```
 
 脚本下载 exe 与官方 SHA-256，本地校验通过后才覆盖 `bin/`，并同步更新 `bin/BUNDLED_VERSION`。完成后需 `git add bin/` 并提交。

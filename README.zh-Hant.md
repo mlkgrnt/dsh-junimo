@@ -19,7 +19,7 @@ DeepSeek Harness 外掛，為《星露谷物語》提供 37 個操控工具，�
 
 第 3 項無法由 MCP 工具實作——mod 執行於遊戲行程內部，不能啟動自身行程，也不能將自身視窗置前。第 4 項由一條宿主路由加一份預先建置的用戶端 bundle 實作，見「[季歷面板](#季歷面板)」。
 
-`junimo-mcp.exe` 已隨包內建（`bin/`，v3.2.1，6 MB），安裝外掛後無需另行取得二進位檔。
+`junimo-mcp.exe` 已隨包內建（`bin/`，v3.2.2，6 MB），安裝外掛後無需另行取得二進位檔。
 
 ## 架構
 
@@ -173,7 +173,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆寫外掛行。patch 會整體替換 
 
 ```bash
 node scripts/sync-binary.mjs          # 取 Junimo-MCP 的最新 release
-node scripts/sync-binary.mjs v3.2.1   # 或鎖定指定 tag
+node scripts/sync-binary.mjs v3.2.2   # 或鎖定指定 tag
 ```
 
 腳本下載 exe 與官方 SHA-256，本機校驗通過後才覆寫 `bin/`，並同步更新 `bin/BUNDLED_VERSION`。完成後需 `git add bin/` 並提交。
