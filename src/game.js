@@ -61,8 +61,15 @@ function runPowerShell(script, timeoutMs = 15000) {
   })
 }
 
-/** 把星露谷窗口切到前台。 */
-export async function focusGameWindow() {
+/**
+ * 把星露谷窗口切到前台。
+ *
+ * `waitMs` > 0 时，窗口还没出现就轮询等 —— 刚 `junimo_game_launch` 完的瞬间，
+ * mod 的 HTTP 端口已经能应答（约 8 秒），但窗口句柄还要再晚几秒才出现；
+ * 这时候立刻进档会拿到「没找到星露谷窗口」的假失败（提示还写着"游戏可能没启动"，
+ * 把人往错方向带）。
+ */
+export async function focusGameWindow({ waitMs = 0 } = {}) {
   const blocked = requireWindows()
   if (blocked) return { ok: false, detail: blocked }
 
@@ -86,12 +93,24 @@ $h = $p.MainWindowHandle
 Write-Output ("OK " + $p.ProcessName + " | " + $p.MainWindowTitle)
 `.trim()
 
-  const res = await runPowerShell(script)
-  if (!res.ok) return { ok: false, detail: res.out || 'PowerShell 执行失败' }
-  if (res.out.startsWith('NO_WINDOW')) {
-    return { ok: false, detail: '没找到星露谷窗口——游戏可能没启动' }
+  const started = Date.now()
+  for (;;) {
+    const res = await runPowerShell(script)
+    if (!res.ok) return { ok: false, detail: res.out || 'PowerShell 执行失败' }
+    if (res.out.startsWith('OK')) return { ok: true, detail: res.out.replace(/^OK\s*/, '') }
+
+    const elapsed = Date.now() - started
+    if (elapsed >= waitMs) {
+      return {
+        ok: false,
+        detail:
+          waitMs > 0
+            ? `等了 ${Math.round(elapsed / 1000)} 秒仍没出现星露谷窗口——游戏没启动，或窗口还在创建`
+            : '没找到星露谷窗口——游戏可能没启动',
+      }
+    }
+    await sleep(1000)
   }
-  return { ok: res.out.startsWith('OK'), detail: res.out.replace(/^OK\s*/, '') }
 }
 
 /** 等 mod 的 /status 可达。 */
@@ -253,7 +272,8 @@ export async function loadSave(paths, slot, timeoutMs) {
     return { ok: true, detail: '已经在存档里，无需进档' }
   }
 
-  const focus = await focusGameWindow()
+  // 刚 launch 完就进档是常见用法 —— 多等一会儿窗口，别把竞态报成「游戏没启动」。
+  const focus = await focusGameWindow({ waitMs: 20000 })
   if (!focus.ok) return { ok: false, detail: `聚焦失败：${focus.detail}` }
 
   // 淡入/转场期间 TitleMenu 会吞点击，先让界面稳定下来。
