@@ -254,6 +254,33 @@ export async function launchGame(paths, timeoutMs = 90_000) {
 }
 
 /**
+ * 等标题页入场动画放完，确认按钮真的可以点了。
+ *
+ * 实测（JunimoBridge 0.1.1，2026-11-04）：从 mod 应答算起，标题页要演约 24 秒的入场：
+ *   logoFadeTimer 5000→0（~6s）→ fadeFromWhiteTimer 4000→0（~10s）
+ *   → pauseBeforeViewportRiseTimer（~13s）→ viewportY 0→-1001（~23s）
+ *   → showButtonsTimer/buttonsToShow 0→3（~24s）→ 各 rect 滑到位（~25s）
+ * 在这之前的点击会被吞 —— 旧实现固定只等 1.5 秒，所以第一轮点击必然白点。
+ * buttonsToShow >= 3 是「按钮已显示」的可靠判据（探针拿不到时退回固定等待）。
+ */
+async function waitTitleMenuReady(apiUrl, timeoutMs) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const res = await apiGet(apiUrl, '/probe/active_menu', 2000)
+    const menu = res.ok ? res.data?.menu : null
+    if (menu && menu.type === 'TitleMenu') {
+      const fields = menu.fields || {}
+      if (typeof fields.buttonsToShow === 'number' && fields.buttonsToShow >= 3) {
+        await sleep(700) // 按钮滑入动画收尾
+        return true
+      }
+    }
+    await sleep(500)
+  }
+  return false
+}
+
+/**
  * 进档。坐标基于 1280×720 的标题界面（窗口模式）：
  * Load 按钮 ≈ (517,609)，存档格 i 中心 ≈ (640, 129 + i*166)。
  *
@@ -276,8 +303,9 @@ export async function loadSave(paths, slot, timeoutMs) {
   const focus = await focusGameWindow({ waitMs: 20000 })
   if (!focus.ok) return { ok: false, detail: `聚焦失败：${focus.detail}` }
 
-  // 淡入/转场期间 TitleMenu 会吞点击，先让界面稳定下来。
-  await sleep(1500)
+  // 淡入/转场期间 TitleMenu 会吞点击：等它演完入场动画（约 24 秒），别按固定 1.5 秒硬猜。
+  const titleReady = await waitTitleMenuReady(paths.apiUrl, 35000)
+  if (!titleReady) await sleep(1500) // 拿不到探针（旧版 mod）时退回固定等待
 
   const attempts = 3
   for (let attempt = 1; attempt <= attempts; attempt++) {

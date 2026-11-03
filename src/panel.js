@@ -64,7 +64,9 @@ export function panelDto(state) {
     return { ok: true, mod: true, ready: false, error: 'mod 尚未返回状态字段' }
   }
   if (root.worldReady !== true) {
-    return { ok: true, mod: true, ready: false }
+    // mod 活着但没进档（停在标题/读档界面）——必须给原因，否则面板只会显示一个没有
+    // 解释的「未连接」，用户分不清是游戏没开还是没进档。
+    return { ok: true, mod: true, ready: false, error: '游戏还没进存档（停在标题/读档界面）' }
   }
 
   const time = obj(root.time) ?? {}
