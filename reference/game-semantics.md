@@ -108,14 +108,15 @@
 | `POST /input/release` | — | 立刻全松 |
 | `GET /input/state` | — | `holding` / `msLeft` / `keys`（我们按住的）/ `observedKeys`（**游戏实际读到的**） |
 
-**实测边界（2026-11-04，JunimoBridge 0.1.0）**：
+**实测边界（2026-11-04，JunimoBridge 0.1.1）**：
 
 - ✅ `use` 真生效：拿锄头 hold 500ms，目标格**真的被锄了**（`/surroundings` 里 HoeDirt 0→1）。
   这是**升级工具蓄力**（铜/钢/铱扩范围）和**钓鱼抛竿**的唯一途径。
-- ⚠️ 方向键：`observedKeys` 显示游戏读到了，但**玩家不移动**（`isMoving` 恒 false）；
-  未调用 `/input/release` 的情况下，连续 hold 也**只有第一次**会改朝向。
+- ✅ 走路也已成：`{"buttons":["left"],"ms":500}` 连按几次会**真的位移**（arm 到 Farm 40,32 实测
+  left 2 格 → down 2 格 → down 2 格，朝向同步改）。前提是 `CanMove=true` 且没有菜单/对话。
 - ⚠️ **两次 hold 之间务必 `POST /input/release`**，否则后续 hold 会被忽略。
-- 结论：当前版本把 `hold` 当**「点一下」**用是可靠的；当「持续按住」用（走路 / 长按蓄力）还不成立。
+- ⚠️ `left/right/up/down` 走的是**游戏内实际绑定**（默认 `A`/`D`/`W`/`S`）。
+  **箭头键在 SDV 里默认没绑**，注入 `Keys.Up` 等于按空气 —— 详见 A.4。
 
 ### A.2 窗口 / 视口 / 菜单探针
 
@@ -137,13 +138,25 @@
 | `POST /position {x,y}` | 瞬移（`warp` 落点不对劲时兜底） | 无 |
 | `POST /stop` | 中止跨帧操作并结账等待中的请求 | 无 |
 | `POST /refill` | 灌满水壶 | 无（工具只在水壶空时自动补） |
-| `POST /key {key,count}` | `confirm` / `skip` / `down` 三个语义键 | `press_key` |
+| `POST /key {key,count}` | `confirm`/`skip`/`escape`/`menu`/`cancel`/`up`/`down`/`left`/`right`/`w`…（见 A.4） | `press_key` |
 | `POST /tool_area {operation,x1,y1,x2,y2}` | 矩形批量锄/浇 | `till` / `water` |
 
-### A.4 0.1.0 已知的硬毛病（排查先看这里）
+### A.4 0.1.1 之后的两条硬规矩（排查先看这里）
 
-- **`press_key` 打不开菜单**：实测 `menu` / `e` / `inventory` / `tab` 都回「已按键」，
-  但 `/probe` 与 `menu_read` 都报无菜单。需要开菜单就用 `interact` 触发（开箱/说话/开门）。
-  `confirm` / `skip` 这类语义键未在新版复测，用前先验证一次。
-- **`interact` 回执里的「交互面向格 (0,0)」不可信**：动作确实触发在正确格，只是回执把坐标算成了 0,0。
-- 无菜单时：`/screen` 的 `menu` 是 `{"open":false,"type":""}`，而 `/probe/active_menu` 是 `menu:null` —— 两者形状不同，写解析别混。
+- **方向键在 SDV 里没有默认绑定。** `options.moveXButton` 默认只绑 `W`/`A`/`S`/`D`，
+  `Game1.UpdateControlInput` 也只查这几个数组 —— 注入 `Keys.Up` 等于按空气，
+  **连朝向都不会变**。所以任何"按方向"的地方都要走语义名（`up`/`down`/`left`/`right`），
+  由执行器解析成实际绑定；直接写 `up`=箭头键的假设是错的。
+  （此坑在 JunimoBridge v0.1.1 已修，`/key` 回执带 `resolvedKeys` 可核对。）
+- **`press_key menu` 打不开菜单，八成是因为已经有界面开着。** 有菜单/事件时
+  `menu`/`escape` 走的是「整段跳过」而不是「再按一次」；只想关掉当前这一层用 `cancel`。
+  干净状态下 `press_key menu` 实测能开 `GameMenu`（0.1.1 复核）。
+- `menu`/`escape`/`cancel` 都按 `Game1.options` 的实际绑定注入（默认 `menu = E+Esc`、
+  `cancel` 走菜单键 —— `cancelButton` 默认是 `V`，对菜单是哑键）。
+- 两处形状差异别混：无菜单时 `/screen` 的 `menu` 是 `{"open":false,"type":""}`，
+  而 `/probe/active_menu` 是 `menu:null`。
+- **`interact` 回执里的「交互面向格 (0,0)」不可信**：动作确实触发在正确格，
+  只是回执把坐标算成了 0,0（未修，仅记录）。
+- **角色转向但不位移**：先查 `CanMove` 与 `activeMenu`（进档/`warp` 后可能卡在起床动画
+  或有 `DialogueBox` 是/否框）。这是游戏侧锁死，不是按键问题 —— `GET /debug/move`
+  一次看全 `pauseTime` / `locationRequest` / 四个方向碰撞 / 按键绑定。
