@@ -2,13 +2,13 @@
 
 [简体中文](README.md) · [繁體中文](README.zh-Hant.md) · [English](README.en-US.md) · **Español**
 
-Un plugin de DeepSeek Harness que aporta 37 herramientas de control a *Stardew Valley*, además de las comprobaciones de despliegue y la gestión del ciclo de vida del juego que la capa MCP no puede alcanzar.
+Un plugin de DeepSeek Harness que aporta 41 herramientas de control a *Stardew Valley*, además de las comprobaciones de despliegue y la gestión del ciclo de vida del juego que la capa MCP no puede alcanzar.
 
 ## Descripción general
 
 Este repositorio es un **bundle de dsh**. Actúa en la capa de profile de [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
-La lógica del juego no se implementa aquí. Las 37 herramientas provienen de `junimo-mcp.exe` (OCaml, archivo único) distribuido por [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP), conectado mediante el protocolo MCP sobre stdio por el `@deepseek-ai/dsh-mcp-client` oficial y expuesto al modelo como `mcp__junimo__<herramienta>`. **Este repositorio no modifica ni una línea de Junimo-MCP.**
+La lógica del juego no se implementa aquí. Las 41 herramientas provienen de `junimo-mcp.exe` (OCaml, archivo único) distribuido por [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP), conectado mediante el protocolo MCP sobre stdio por el `@deepseek-ai/dsh-mcp-client` oficial y expuesto al modelo como `mcp__junimo__<herramienta>`. **Este repositorio no modifica ni una línea de Junimo-MCP.**
 
 El plugin asume cuatro responsabilidades:
 
@@ -32,7 +32,7 @@ modelo ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-
 
 | Componente | Lo aporta | Notas |
 |---|---|---|
-| 37 herramientas de juego | `@deepseek-ai/dsh-mcp-client` + ejecutable incluido | Percepción, movimiento, interacción, menús, tareas agrícolas, cofres, social, festivales, sustento |
+| 41 herramientas de juego | `@deepseek-ai/dsh-mcp-client` + ejecutable incluido | Percepción, movimiento, interacción, menús, tareas agrícolas, cofres, social, festivales, sustento |
 | 4 herramientas nativas | Este plugin | `junimo_doctor` / `junimo_focus` / `junimo_game_launch` / `junimo_load_save` |
 | Disciplina de prompt | Este plugin | Sección del prompt del sistema `junimo:rules`, unos 1000 caracteres |
 | Skill incluida | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`, se carga bajo demanda, sin coste de contexto permanente |
@@ -111,7 +111,7 @@ El `cordis.patch.yml` de un profile sobrescribe las filas del plugin por `id`. U
 | Herramienta | Función |
 |---|---|
 | `junimo_doctor` | Diagnóstico de la cadena. Solo lectura, no repara nada. Conviene llamarla antes de tocar el juego |
-| `junimo_focus` | Trae la ventana del juego al frente. SDV se pausa al perder el foco, y con el juego pausado los clics y las operaciones de menú no hacen nada |
+| `junimo_focus` | Trae la ventana al frente. **Con JunimoBridge >=0.3.0 el control en segundo plano está activo por defecto y el juego sigue siendo controllable minimizado**; solo hace falta para depurar el foco o con el ejecutor antiguo NagiBridge |
 | `junimo_game_launch` | Inicia el juego mediante `StardewModdingAPI.exe` y espera respuesta en el 7850; no hace nada si ya está en marcha. SMAPI es un programa de consola y se cierra al instante si se lanza directamente, así que se inicia primero a través de bash y solo se recurre a `cmd` si no hay bash |
 | `junimo_load_save` | Enfoca la ventana → pulsa Load → pulsa la ranura → sondea hasta `worldReady`; reintenta la ronda completa si falla |
 
@@ -119,7 +119,7 @@ Lo difícil de `junimo_load_save` es el momento, no las coordenadas. `TitleMenu.
 
 ### Herramientas puenteadas
 
-La lista completa de las 37 herramientas `mcp__junimo__*`, con argumentos y advertencias, está en [`reference/game-semantics.md`](./reference/game-semantics.md).
+La lista completa de las 41 herramientas `mcp__junimo__*`, con argumentos y advertencias, está en [`reference/game-semantics.md`](./reference/game-semantics.md).
 
 Entre ellas, `choose` de `story` es de dos fases dentro de `junimo-mcp.exe`: la ruta por defecto registra primero la respuesta en el juego y, si la pantalla no avanza, envía automáticamente un clic real de seguimiento. Verificado en partida real (evento de adopción de mascota): tras elegir, el evento avanzó a la escena siguiente. Quien llama no necesita, y no debe, enviar un segundo clic.
 
@@ -163,7 +163,7 @@ El panel es una superficie de observación, así que un error nunca debe devolve
 
 ### Solo se registra en el profile web
 
-La ruta del panel se registra **bajo demanda** dentro de `ctx.inject(['webServer'])`, no en el `inject` de nivel superior del plugin. Los profiles headless y tui no tienen el servicio `webServer`; declarar la dependencia arriba impediría que el plugin entero —incluido el puente de 37 herramientas y la sección de prompt— se activara. Con la inyección bajo demanda, la ausencia del servicio solo desactiva esta ruta.
+La ruta del panel se registra **bajo demanda** dentro de `ctx.inject(['webServer'])`, no en el `inject` de nivel superior del plugin. Los profiles headless y tui no tienen el servicio `webServer`; declarar la dependencia arriba impediría que el plugin entero —incluido el puente de 41 herramientas y la sección de prompt— se activara. Con la inyección bajo demanda, la ausencia del servicio solo desactiva esta ruta.
 
 El bundle de cliente se declara con el campo `dsh.client` de `package.json` (`platform: web`) y depende de `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`; `client/index.js` es un artefacto ya compilado, así que no se construye nada al instalar.
 
@@ -233,7 +233,7 @@ El plugin hoy **solo funciona en Windows**, pero las razones se reparten en tres
 | Este plugin (lanzamiento de procesos, foco de ventana, sondeo de rutas) | **Solo Windows** | El foco usa user32, el lanzamiento pasa por PowerShell y bash, y las bibliotecas de Steam se buscan por letra de unidad |
 | Mod ejecutor (JunimoBridge / NagiBridge-Remix) | **Parcialmente solo Windows** | `/press_key` y `/click_tile` usan `keybd_event` / `mouse_event`; `/click` usa llamadas en proceso cuando hay un menú abierto o se pasa `no_mouse`, y de por sí es portable |
 
-El plugin incluye solo el `junimo-mcp.exe` de Windows. Quien use macOS o Linux puede bajar el artefacto correspondiente de [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) y apuntar `JUNIMO_MCP_BIN` hacia él: eso cubre la mayoría de las 37 herramientas. En sistemas que no son Windows, `junimo_doctor` muestra la URL de descarga de esa plataforma en lugar de un vago «no se encuentra el ejecutable».
+El plugin incluye solo el `junimo-mcp.exe` de Windows. Quien use macOS o Linux puede bajar el artefacto correspondiente de [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) y apuntar `JUNIMO_MCP_BIN` hacia él: eso cubre la mayoría de las 41 herramientas. En sistemas que no son Windows, `junimo_doctor` muestra la URL de descarga de esa plataforma en lugar de un vago «no se encuentra el ejecutable».
 
 Las herramientas **propias del plugin** `junimo_focus` / `junimo_game_launch` / `junimo_load_save` siguen siendo solo para Windows: son la razón de existir del plugin, y usarlas en otra plataforma implica añadir tú mismo la capa correspondiente (foco con `osascript` / `xdotool`, sondeo de rutas con el directorio de Steam de cada sistema). Ahí está el límite del port.
 

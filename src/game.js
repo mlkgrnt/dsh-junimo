@@ -2,7 +2,7 @@
  * 游戏生命周期工具：这三件事 MCP 工具做不到，因为 mod 跑在游戏**里面**，
  * 没法自己启动自己、也没法把自己的窗口提到前台。
  *
- *   junimo_focus       —— 切前台（SDV 失焦会暂停，菜单点击不生效）
+ *   junimo_focus       —— 切前台（JunimoBridge >=0.3.0 默认后台可操控，仅排查/旧执行器用）
  *   junimo_game_launch —— 起 SMAPI 进程并等 7850 起来
  *   junimo_load_save   —— 聚焦 + 点 Load + 点存档格 + 等 worldReady
  *

@@ -2,13 +2,13 @@
 
 [简体中文](README.md) · **繁體中文** · [English](README.en-US.md) · [Español](README.es-ES.md)
 
-DeepSeek Harness 外掛，為《星露谷物語》提供 37 個操控工具，並補足 MCP 層無法涵蓋的部署自檢與遊戲生命週期管理。
+DeepSeek Harness 外掛，為《星露谷物語》提供 41 個操控工具，並補足 MCP 層無法涵蓋的部署自檢與遊戲生命週期管理。
 
 ## 概述
 
 本儲存庫是一個 **dsh 組合包（bundle）**，作用於 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 profile 層。
 
-遊戲邏輯不在此實作。全部 37 個工具由 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的 `junimo-mcp.exe`（OCaml，單一檔案）提供，經官方 `@deepseek-ai/dsh-mcp-client` 以 stdio MCP 協定橋接，模型側呈現為 `mcp__junimo__<工具名>`。**本儲存庫不修改 Junimo-MCP 的任何程式碼。**
+遊戲邏輯不在此實作。全部 41 個工具由 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的 `junimo-mcp.exe`（OCaml，單一檔案）提供，經官方 `@deepseek-ai/dsh-mcp-client` 以 stdio MCP 協定橋接，模型側呈現為 `mcp__junimo__<工具名>`。**本儲存庫不修改 Junimo-MCP 的任何程式碼。**
 
 外掛自身承擔四項職責：
 
@@ -32,7 +32,7 @@ DeepSeek Harness 外掛，為《星露谷物語》提供 37 個操控工具，�
 
 | 組成 | 提供方 | 說明 |
 |---|---|---|
-| 37 個遊戲工具 | `@deepseek-ai/dsh-mcp-client` + 內建 exe | 感知、移動、互動、介面、農活、箱子、社交、節慶、生計 |
+| 41 個遊戲工具 | `@deepseek-ai/dsh-mcp-client` + 內建 exe | 感知、移動、互動、介面、農活、箱子、社交、節慶、生計 |
 | 4 個原生工具 | 本外掛 | `junimo_doctor` / `junimo_focus` / `junimo_game_launch` / `junimo_load_save` |
 | 提示詞紀律 | 本外掛 | 系統提示詞段落 `junimo:rules`，約 1000 字元 |
 | 隨包 skill | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`，按需載入，不佔常駐上下文 |
@@ -111,7 +111,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆寫外掛行。patch 會整體替換 
 | 工具 | 用途 |
 |---|---|
 | `junimo_doctor` | 鏈路診斷。唯讀，不執行修復。操作遊戲前應首先呼叫 |
-| `junimo_focus` | 將遊戲視窗置前。SDV 失焦會自動暫停，此時點擊與選單操作均不生效 |
+| `junimo_focus` | 將遊戲視窗置前。**JunimoBridge ≥0.3.0 預設開啟背景操控，最小化後照樣能操作，日常不用調**；只在排查焦點問題、或用舊執行器（NagiBridge）時才需要 |
 | `junimo_game_launch` | 透過 `StardewModdingAPI.exe` 啟動遊戲並等待 7850 回應；已在執行時不會重複啟動。SMAPI 是主控台程式，直接 spawn 會秒退，因此優先經 bash 啟動，找不到 bash 才退回 `cmd` |
 | `junimo_load_save` | 聚焦視窗 → 點擊 Load → 點擊存檔格 → 輪詢至 `worldReady`，失敗時整輪重試 |
 
@@ -119,7 +119,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆寫外掛行。patch 會整體替換 
 
 ### 橋接工具
 
-37 個 `mcp__junimo__*` 工具的完整清單、參數與注意事項見 [`reference/game-semantics.md`](./reference/game-semantics.md)。
+41 個 `mcp__junimo__*` 工具的完整清單、參數與注意事項見 [`reference/game-semantics.md`](./reference/game-semantics.md)。
 
 其中 `story` 的 `choose` 在 `junimo-mcp.exe` 內部採用兩段式：預設路徑先向遊戲登記答案，若介面未推進則自動補發一次真實點擊。實機驗證（寵物領養事件）選完即推進到下一幕。呼叫方不需要、也不應再補第二發點擊。
 
@@ -163,7 +163,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆寫外掛行。patch 會整體替換 
 
 ### 只為 web profile 註冊
 
-面板路由掛在 `ctx.inject(['webServer'])` 裡**按需註冊**，不放入外掛的頂層 `inject`。headless / tui profile 沒有 `webServer` 服務，若在頂層宣告這個依賴，整個外掛——包括 37 個工具的裝配與提示詞段落——會一起無法啟動；按需注入時缺服務只是這一條不生效。
+面板路由掛在 `ctx.inject(['webServer'])` 裡**按需註冊**，不放入外掛的頂層 `inject`。headless / tui profile 沒有 `webServer` 服務，若在頂層宣告這個依賴，整個外掛——包括 41 個工具的裝配與提示詞段落——會一起無法啟動；按需注入時缺服務只是這一條不生效。
 
 用戶端 bundle 由 `package.json` 的 `dsh.client` 欄位宣告（`platform: web`），依賴 `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`；`client/index.js` 是預先建置的產物，安裝後無需再建置。
 
@@ -233,7 +233,7 @@ dsh --profile <name> --no-open                          # 啟動；出現 "entri
 | 本外掛（行程啟動、視窗聚焦、路徑偵測） | **僅 Windows** | 聚焦用 user32，啟動走 PowerShell 與 bash，Steam 庫按磁碟代號偵測 |
 | 執行器 mod（JunimoBridge / NagiBridge-Remix） | **部分僅 Windows** | `/press_key` 與 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有選單或帶 `no_mouse` 時走行程內呼叫，本身可移植 |
 
-本外掛隨包只帶 Windows 的 `junimo-mcp.exe`。macOS / Linux 使用者可以從 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取對應產物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指過來即可使用 37 個工具中的大部分；`junimo_doctor` 在非 Windows 上會直接給出該平台對應的下載位址，而不是籠統地報「找不到 exe」。
+本外掛隨包只帶 Windows 的 `junimo-mcp.exe`。macOS / Linux 使用者可以從 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取對應產物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指過來即可使用 41 個工具中的大部分；`junimo_doctor` 在非 Windows 上會直接給出該平台對應的下載位址，而不是籠統地報「找不到 exe」。
 
 但**外掛本身**的 `junimo_focus` / `junimo_game_launch` / `junimo_load_save` 仍然只有 Windows 實作——這三個是外掛存在的理由，想用它們需要自己補一份平台適配（聚焦換 `osascript` / `xdotool`，路徑偵測換各平台的 Steam 目錄）。移植的邊界就到這裡。
 

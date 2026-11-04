@@ -2,13 +2,13 @@
 
 [简体中文](README.md) · [繁體中文](README.zh-Hant.md) · **English** · [Español](README.es-ES.md)
 
-A DeepSeek Harness plugin that gives *Stardew Valley* 37 control tools, plus the deployment checks and game lifecycle management the MCP layer cannot reach.
+A DeepSeek Harness plugin that gives *Stardew Valley* 41 control tools, plus the deployment checks and game lifecycle management the MCP layer cannot reach.
 
 ## Overview
 
 This repository is a **dsh bundle**. It operates at the profile layer of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
-Game logic is not implemented here. All 37 tools come from `junimo-mcp.exe` (OCaml, single file) shipped by [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP), bridged over the stdio MCP protocol by the official `@deepseek-ai/dsh-mcp-client` and surfaced to the model as `mcp__junimo__<tool>`. **This repository does not modify a single line of Junimo-MCP.**
+Game logic is not implemented here. All 41 tools come from `junimo-mcp.exe` (OCaml, single file) shipped by [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP), bridged over the stdio MCP protocol by the official `@deepseek-ai/dsh-mcp-client` and surfaced to the model as `mcp__junimo__<tool>`. **This repository does not modify a single line of Junimo-MCP.**
 
 The plugin itself has four responsibilities:
 
@@ -32,7 +32,7 @@ model ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-m
 
 | Component | Provided by | Notes |
 |---|---|---|
-| 37 game tools | `@deepseek-ai/dsh-mcp-client` + bundled exe | Perception, movement, interaction, menus, farm work, chests, social, festivals, livelihood |
+| 41 game tools | `@deepseek-ai/dsh-mcp-client` + bundled exe | Perception, movement, interaction, menus, farm work, chests, social, festivals, livelihood |
 | 4 native tools | This plugin | `junimo_doctor` / `junimo_focus` / `junimo_game_launch` / `junimo_load_save` |
 | Prompt discipline | This plugin | System prompt section `junimo:rules`, roughly 1000 characters |
 | Bundled skill | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`, loaded on demand, no resident context cost |
@@ -111,7 +111,7 @@ A profile's `cordis.patch.yml` overrides plugin rows by `id`. A patch replaces `
 | Tool | Purpose |
 |---|---|
 | `junimo_doctor` | Chain diagnostics. Read-only, performs no repairs. Call it before touching the game |
-| `junimo_focus` | Bring the game window to the front. SDV pauses itself when unfocused, and clicks and menu operations do nothing while paused |
+| `junimo_focus` | Bring the game window to the front. **With JunimoBridge >=0.3.0, background control is on by default and the game stays fully controllable while minimized**; only needed for focus debugging or the legacy NagiBridge executor |
 | `junimo_game_launch` | Start the game via `StardewModdingAPI.exe` and wait for port 7850 to answer; does nothing if already running. SMAPI is a console program and exits instantly when spawned directly, so it is launched through bash first, falling back to `cmd` only when bash is missing |
 | `junimo_load_save` | Focus the window → click Load → click the save slot → poll until `worldReady`; retries the whole round on failure |
 
@@ -119,7 +119,7 @@ The hard part of `junimo_load_save` is timing, not coordinates. `TitleMenu.recei
 
 ### Bridged tools
 
-The full list of 37 `mcp__junimo__*` tools, with arguments and caveats, is in [`reference/game-semantics.md`](./reference/game-semantics.md).
+The full list of 41 `mcp__junimo__*` tools, with arguments and caveats, is in [`reference/game-semantics.md`](./reference/game-semantics.md).
 
 Among them, `story`'s `choose` is two-stage inside `junimo-mcp.exe`: the default path first registers the answer with the game, and if the screen does not advance it automatically follows up with one real click. Verified on a real save (pet adoption event) — the event advanced to the next scene immediately after choosing. Callers need not, and should not, send a second click.
 
@@ -163,7 +163,7 @@ The panel is an observation surface, so an error must never hand the browser a b
 
 ### Registered for the web profile only
 
-The panel route is registered **on demand** inside `ctx.inject(['webServer'])` rather than in the plugin's top-level `inject`. The headless and tui profiles have no `webServer` service; declaring the dependency at the top level would prevent the whole plugin — including the 37-tool bridge and the prompt section — from activating. With on-demand injection, a missing service only disables this one route.
+The panel route is registered **on demand** inside `ctx.inject(['webServer'])` rather than in the plugin's top-level `inject`. The headless and tui profiles have no `webServer` service; declaring the dependency at the top level would prevent the whole plugin — including the 41-tool bridge and the prompt section — from activating. With on-demand injection, a missing service only disables this one route.
 
 The client bundle is declared by the `dsh.client` field in `package.json` (`platform: web`) and depends on `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`; `client/index.js` is a prebuilt artifact, so nothing is built at install time.
 
@@ -233,7 +233,7 @@ The plugin currently **runs on Windows only**, but the reasons are spread across
 | This plugin (process launch, window focus, path probing) | **Windows only** | Focus uses user32, launching goes through PowerShell and bash, Steam libraries are probed by drive letter |
 | Executor mod (JunimoBridge / NagiBridge-Remix) | **Partly Windows only** | `/press_key` and `/click_tile` use `keybd_event` / `mouse_event`; `/click` uses in-process calls when a menu is open or `no_mouse` is set, and is itself portable |
 
-The plugin bundles only the Windows `junimo-mcp.exe`. macOS and Linux users can fetch the matching artifact from [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) and point `JUNIMO_MCP_BIN` at it, which is enough for most of the 37 tools. On non-Windows platforms `junimo_doctor` prints the download URL for that platform rather than a vague "executable not found".
+The plugin bundles only the Windows `junimo-mcp.exe`. macOS and Linux users can fetch the matching artifact from [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) and point `JUNIMO_MCP_BIN` at it, which is enough for most of the 41 tools. On non-Windows platforms `junimo_doctor` prints the download URL for that platform rather than a vague "executable not found".
 
 The **plugin's own** `junimo_focus` / `junimo_game_launch` / `junimo_load_save` remain Windows-only — those three are the reason the plugin exists, and using them elsewhere means adding a platform layer yourself (focus via `osascript` / `xdotool`, path probing via each platform's Steam directory). That is where the porting boundary lies.
 

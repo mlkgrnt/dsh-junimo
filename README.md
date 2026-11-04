@@ -2,13 +2,13 @@
 
 **简体中文** · [繁體中文](README.zh-Hant.md) · [English](README.en-US.md) · [Español](README.es-ES.md)
 
-DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，并补充 MCP 层无法覆盖的部署自检与游戏生命周期管理。
+DeepSeek Harness 插件，为《星露谷物语》提供 41 个操控工具，并补充 MCP 层无法覆盖的部署自检与游戏生命周期管理。
 
 ## 概述
 
 本仓库是一个 **dsh 组合包（bundle）**，作用于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 profile 层。
 
-游戏逻辑不在此实现。全部 37 个工具由 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的 `junimo-mcp.exe`（OCaml，单文件）提供，经官方 `@deepseek-ai/dsh-mcp-client` 以 stdio MCP 协议桥接，模型侧呈现为 `mcp__junimo__<工具名>`。**本仓库不修改 Junimo-MCP 的任何代码。**
+游戏逻辑不在此实现。全部 41 个工具由 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP) 的 `junimo-mcp.exe`（OCaml，单文件）提供，经官方 `@deepseek-ai/dsh-mcp-client` 以 stdio MCP 协议桥接，模型侧呈现为 `mcp__junimo__<工具名>`。**本仓库不修改 Junimo-MCP 的任何代码。**
 
 插件自身承担四项职责：
 
@@ -32,7 +32,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 37 个操控工具，�
 
 | 组成 | 提供方 | 说明 |
 |---|---|---|
-| 37 个游戏工具 | `@deepseek-ai/dsh-mcp-client` + 内置 exe | 感知、移动、交互、界面、农活、箱子、社交、节日、生计 |
+| 41 个游戏工具 | `@deepseek-ai/dsh-mcp-client` + 内置 exe | 感知、移动、交互、界面、农活、箱子、社交、节日、生计 |
 | 4 个原生工具 | 本插件 | `junimo_doctor` / `junimo_focus` / `junimo_game_launch` / `junimo_load_save` |
 | 提示词纪律 | 本插件 | 系统提示词段落 `junimo:rules`，约 1000 字符 |
 | 随包 skill | `@deepseek-ai/dsh-skill-filesystem` | `skills/junimo/`，按需加载，不占常驻上下文 |
@@ -111,7 +111,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 | 工具 | 用途 |
 |---|---|
 | `junimo_doctor` | 链路诊断。只读，不执行修复。操作游戏前应首先调用 |
-| `junimo_focus` | 将游戏窗口置前。SDV 失焦会自动暂停，此时点击与菜单操作均不生效 |
+| `junimo_focus` | 将游戏窗口置前。**JunimoBridge ≥0.3.0 默认开启后台操控，最小化后照样能操作，日常不用调**；只在排查焦点问题、或用旧执行器（NagiBridge）时才需要 |
 | `junimo_game_launch` | 通过 `StardewModdingAPI.exe` 启动游戏并等待 7850 响应；已在运行时不会重复启动。SMAPI 是控制台程序，直接 spawn 会秒退，因此优先经 bash 启动，找不到 bash 才退回 `cmd` |
 | `junimo_load_save` | 聚焦窗口 → 点击 Load → 点击存档格 → 轮询至 `worldReady`，失败时整轮重试 |
 
@@ -119,7 +119,18 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 
 ### 桥接工具
 
-37 个 `mcp__junimo__*` 工具的完整清单、参数与注意事项见 [`reference/game-semantics.md`](./reference/game-semantics.md)。
+## 模型怎么查工具
+
+分工刻意分开，别把长文档塞进常驻提示词：
+
+| 层 | 放什么 | 什么时候进上下文 |
+|---|---|---|
+| MCP `tools/list` | 41 个工具的**参数定义与描述** | 自动，模型调工具时本来就有 |
+| `systemPrompt.section` | 9 条时序纪律 + 一个指向长文档的**路径指针** | 常驻，约 1KB |
+| [`reference/game-semantics.md`](./reference/game-semantics.md) | 「我想… → 用哪个工具」决策速查表、标准工作日、常见错误、原始端点逃生通道、已知边界 | **按需读**，模型遇到相应任务才加载 |
+| [`skills/junimo/SKILL.md`](./skills/junimo/SKILL.md) | 一页最短流程 + 三条最容易翻车的 | skill 命中时加载 |
+
+所以**不需要另附一份「各工具使用说明」**：参数重复一遍只会加 token，真正有价值的是「什么时候用哪个、组合顺序、回执怎么读、哪些坑别踩」，都已经在 `game-semantics.md` 里。新增工具时同步那张速查表即可。
 
 其中 `story` 的 `choose` 在 `junimo-mcp.exe` 内部采用两段式：默认路径先向游戏登记答案，若界面未推进则自动补发一次真实点击。实机验证（宠物领养事件）选完即推进到下一幕。调用方不需要、也不应再补第二发点击。
 
@@ -163,7 +174,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 
 ### 只为 web profile 注册
 
-面板路由挂在 `ctx.inject(['webServer'])` 里**按需注册**，不放进插件的顶层 `inject`。headless / tui profile 没有 `webServer` 服务，若在顶层声明这个依赖，整个插件——包括 37 个工具的装配与提示词段落——会一起激活不了；按需注入时缺服务只是这一条不生效。
+面板路由挂在 `ctx.inject(['webServer'])` 里**按需注册**，不放进插件的顶层 `inject`。headless / tui profile 没有 `webServer` 服务，若在顶层声明这个依赖，整个插件——包括 41 个工具的装配与提示词段落——会一起激活不了；按需注入时缺服务只是这一条不生效。
 
 客户端 bundle 由 `package.json` 的 `dsh.client` 字段声明（`platform: web`），依赖 `dsh-client-ui-renderer` / `dsh-client-ui-tool` / `dsh-client-ui-sidebar-right`；`client/index.js` 是预构建产物，安装后无需再构建。
 
@@ -233,7 +244,7 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 | 本插件（进程启动、窗口聚焦、路径探测） | **仅 Windows** | 聚焦用 user32，启动走 PowerShell 与 bash，Steam 库按盘符探测 |
 | 执行器 mod（JunimoBridge / NagiBridge-Remix） | **部分仅 Windows** | `/press_key` 与 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有菜单或带 `no_mouse` 时走进程内调用，本身可移植 |
 
-本插件随包只带 Windows 的 `junimo-mcp.exe`。macOS / Linux 用户可以从 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取对应产物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指过来即可使用 37 个工具中的大部分；`junimo_doctor` 在非 Windows 上会直接给出该平台对应的下载地址，而不是笼统地报「找不到 exe」。
+本插件随包只带 Windows 的 `junimo-mcp.exe`。macOS / Linux 用户可以从 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取对应产物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指过来即可使用 41 个工具中的大部分；`junimo_doctor` 在非 Windows 上会直接给出该平台对应的下载地址，而不是笼统地报「找不到 exe」。
 
 但**插件本身**的 `junimo_focus` / `junimo_game_launch` / `junimo_load_save` 仍然只有 Windows 实现——这三个是插件存在的理由，想用它们需要自己补一份平台适配（聚焦换 `osascript` / `xdotool`，路径探测换各平台的 Steam 目录）。移植的边界就到这里。
 

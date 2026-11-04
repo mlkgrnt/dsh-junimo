@@ -2,6 +2,24 @@
 
 体例参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号跟 `package.json` 走。
 
+## [0.4.2] - 2026-11-05
+
+### 文档维护：工具速查表对齐 v3.3.1 / JunimoBridge 0.3.2
+
+结论：**不新增第二份工具说明**。参数定义由 MCP `tools/list` 自动提供，
+`systemPrompt` 只放 9 条纪律 + 一个路径指针，长查表按需读 —— 这个分层是对的，
+README 新增「模型怎么查工具」把分工写清楚了。
+
+- 工具数 **37 → 41**：package.json / 四语 README / skill / 常驻提示词 / 长文档 / 测试注释全部对齐。
+- 速查表补 4 个新工具：`fishing` / `cast` / `fish` / `minigame`，并写明 `fish`
+  回执只认 `delivered`（`won` 是打赢小游戏、`directCatch` 是垃圾类直接入包）。
+- **修掉一处自相矛盾**：常驻纪律第 5 条还写「失焦会暂停，驱动 UI 前先 `junimo_focus`」，
+  而附录 A.3.2 已写「最小化也能操控」。现在统一为 JunimoBridge ≥0.3.0 默认开后台操控、
+  日常不用 focus，但最小化时时间照常流逝、长挂机仍要 `pause_time`。
+- 数据流 `NagiBridge mod` → `JunimoBridge mod（7850）`（默认执行器早换了）。
+- 附录 A.3.1 更新：收线交付（0.3.1）与连续钓（0.3.2）都已修；**产出垃圾是游戏特性，不用排查**。
+- 四语 README 的 `junimo_focus` 说明同步。
+
 ## [0.3.2] - 2026-11-04
 
 ### 修复

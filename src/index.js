@@ -1,7 +1,7 @@
 /**
  * dsh-junimo 插件入口。
  *
- * 它本身不实现任何游戏逻辑——37 个工具全部来自 junimo-mcp.exe，由
+ * 它本身不实现任何游戏逻辑——41 个工具全部来自 junimo-mcp.exe，由
  * `@deepseek-ai/dsh-mcp-client` 桥接成 `mcp__junimo__*`。本插件负责三件
  * mcp-client 管不到的事：
  *
@@ -37,7 +37,7 @@ function rulesText(exeExists, apiUrl, referenceDir) {
 
   return `## 星露谷物语操作
 
-${bridge} 数据流：工具 → junimo-mcp.exe → HTTP(${apiUrl}) → NagiBridge mod → 游戏。翻译时序、游戏侧校验、失败回滚都在服务器里，你只管调工具。
+${bridge} 数据流：工具 → junimo-mcp.exe → HTTP(${apiUrl}) → JunimoBridge mod（7850）→ 游戏。翻译时序、游戏侧校验、失败回滚都在服务器里，你只管调工具。
 
 先跑 \`junimo_doctor\` 再动手（一次看清 exe / 端口 / 存档 / SMAPI 哪一环没接上）。
 
@@ -47,13 +47,13 @@ ${bridge} 数据流：工具 → junimo-mcp.exe → HTTP(${apiUrl}) → NagiBrid
 2. **别自己加延时、别连发动作**。每次调用会阻塞到动作真正发生（含 ~550ms 的生效帧回读）。报成功 = 游戏里真发生了，报错 = 真没发生，按文案处理，不要"再多试几下"。
 3. **动作被挡先看报错**。带选项的问题框 / 商店 / 箱子会直接把原文和带序号选项写进报错，一步 \`menu_click {"option":N}\` 即可；无选项对话已自动按掉，不用管。
 4. **剧情永不自动跳过**。想看就用 \`story\`（read/next/choose/skip）；\`choose\` 内部是两段式（先登记再真实点击），不用你补第二发。
-5. **失焦会暂停**。窗口在后台时点击不生效——驱动 UI 前先 \`junimo_focus\`。
+5. **窗口最小化也能操作**（JunimoBridge ≥0.3.0 默认开），不必先 \`junimo_focus\`；只有排查焦点问题、或用旧执行器时才需要它。注意最小化时游戏时间照常流逝，长时间挂机仍要 \`pause_time\`。
 6. **长时间挂机先 \`pause_time\`**，收尾 \`resume_time\`；现实约 12 分钟游戏内就走到凌晨 2:00 晕倒扣钱。
 7. **移动失败别硬刚**：\`go_to\` 报寻路失败就是真到不了（不会给你穿墙）；报「已到达目标附近」= 目标格站不住，视为到达。
 8. **批量农活用 \`till\`/\`plant\`/\`water\`/\`harvest\` 的区域参数**，不要一格一格调；动手前 \`get_inventory\` 确认背包有空位。
 9. 多数工具的返回末尾都带 \`── [..]\` 状态速报，日常查询可以省掉一次 \`get_state\`。
 
-完整语义（37 个工具速查表、部署步骤、踩过的坑）在 \`${referenceDir}\\game-semantics.md\`，需要时直接读。`
+完整语义（41 个工具速查表、部署步骤、踩过的坑）在 \`${referenceDir}\\game-semantics.md\`，需要时直接读。`
 }
 
 export function apply(ctx) {
@@ -64,7 +64,7 @@ export function apply(ctx) {
   ctx.provide('junimoPaths', paths)
 
   // 季历面板的数据入口。**不放进顶层 inject**：headless / tui profile 没有
-  // webServer，那样整个插件（含 37 个工具的提示词）都会激活不了。按需注入时
+  // webServer，那样整个插件（含 41 个工具的提示词）都会激活不了。按需注入时
   // 缺服务只是这一条不起作用。
   ctx.inject(['webServer'], scoped => {
     scoped.effect(
@@ -125,7 +125,7 @@ export function apply(ctx) {
     defineTool({
       name: 'junimo_focus',
       description:
-        '把星露谷窗口切到前台。SDV 失焦会自动暂停，导致点击/菜单操作静默失效——驱动 UI 前先调用。',
+        '把星露谷窗口切到前台。JunimoBridge >=0.3.0 起后台操控默认开启，窗口最小化时 MCP 照样能操控，日常不必调用；只在排查焦点问题、或用旧执行器（NagiBridge）时才需要。',
       parameters: {},
       output: textOutput,
       async execute() {

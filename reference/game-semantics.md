@@ -1,7 +1,7 @@
 # 星露谷操作参考（dsh-junimo）
 
 > 这份文件是给模型按需读的长文档；常驻提示词里只有压缩过的纪律。
-> 工具本体来自 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP)（OCaml 单 exe，37 个意图工具），
+> 工具本体来自 [Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP)（OCaml 单 exe，41 个意图工具），
 > 本插件只负责把它接进 DeepSeek Harness。
 
 ## 数据流
@@ -17,7 +17,7 @@
 1. **exe 在吗** → `junimo_doctor`
 2. **游戏在跑吗** → `junimo_doctor` 会看 7850 端口；没起就 `junimo_game_launch`
 3. **进档了吗** → `junimo_doctor` 报 `worldReady=false` 就 `junimo_load_save`
-4. **工具齐吗** → 应有 37 个 `mcp__junimo__*`；少了说明 exe 是旧版或没挂上
+4. **工具齐吗** → 应有 41 个 `mcp__junimo__*`；少了说明 exe 是旧版或没挂上
 
 ## 十条铁律
 
@@ -32,7 +32,7 @@
 9. **「没有需要浇水的作物」不是错误**。雨天、洒水器覆盖、刚浇过都会这样回答，如实接受。
 10. **节日查询用 `festival`**（今天/明天/下一个）；参加节日要走游戏原生入口，别 `warp` 到节日场地（不触发场景）。
 
-## 工具速查（37 个）
+## 工具速查（41 个）
 
 | 我想… | 工具 | 关键说明 |
 |---|---|---|
@@ -63,8 +63,12 @@
 | 看剧情 / 推进剧情 | `story` | `read`/`next`/`choose option=N`/`skip`；`choose` 内部两段式 |
 | 关菜单 | `menu_close` | 睡完的 SaveGameMenu、夜里的 ShippingMenu 必须关掉才能继续 |
 | 选中物品 / 用手持 / 挥工具 / 与面前格交互 | `select_item` / `use_held` / `swing_tool` / `interact` | 播种放置用 `use_held`；对话 NPC 用 `interact` |
+| 查钓鱼状态 / 找钓点 | `fishing` | `radius>0` 时列出附近水域与「站哪格、往哪抛」 |
+| 蓄力抛竿 | `cast` | 按住「使用」再松手，`ms` 越大越远；失败自动重试 |
+| **全自动钓一条** | `fish` | 抛竿→等咬钩→提竿→控绿条→结算。回执分 `won` / `delivered` / `directCatch`，**以 `delivered` 为准** |
+| 小游戏（非钓鱼） | `minigame` | `read` / `key` / `quit`；键名是字面物理键 |
 
-> 37 个工具**覆盖不到**的能力（按住输入=蓄力/抛竿、窗口与焦点探针、结构化菜单）见 [附录 A](#附录-a原始端点逃生通道工具覆盖不到时)。
+> 工具层**覆盖不到**的能力（窗口/焦点探针、结构化菜单、原始输入注入）见 [附录 A](#附录-a原始端点逃生通道工具覆盖不到时)。
 
 ## 一个标准工作日
 
@@ -87,6 +91,7 @@
 | 手动逐格移动干活 | 用批量工具的区域/自动扫描参数 |
 | 给宠物起名（NamingMenu） | `/menu` 不暴露文本框 ⇒ `menu_click {"x":800,"y":352}` 接受默认名 |
 | 连发多个动作抢进度 | 一等一，等返回再发下一个 |
+| 把 `fish` 的 `won=true` / `progressPeak=1` 当成"钓到了" | 只看 `delivered`；`won` 仅表示打赢小游戏，`directCatch` 表示垃圾类直接入包 |
 
 ## 已知边界（不是 bug，别去试）
 
@@ -125,7 +130,10 @@
 | `GET /screen` | `viewport`（**物理像素**窗口矩形）、`uiViewport`、`mouse`、`foreground`/`isActive`、`menu{open,type,components,subMenu}` |
 | `GET /probe/active_menu` | 只要菜单部分，返回 `{ok,open,menu}` |
 
-- **「点了没反应」先查 `foreground`/`isActive`** —— SDV 失焦会暂停，此时坐标再准也没用。
+- **「点了没反应」别默认归因于失焦**：JunimoBridge ≥0.3.0 起后台操控默认开，
+  最小化也能用。先读 `GET /debug/focus` 的 `foreground` / `minimized` /
+  `platformPinned` / `pinnedFrames` 判断焦点链路，再怀疑是淡入时机或菜单挡住
+  （`TitleMenu` 淡入期间会静默吞点击，见项目记忆）。
 - 截屏/点击换算用 `viewport`（物理像素），**别用 Win32 `GetWindowRect` 的逻辑坐标**（本机 DPI 175%，差 1.75 倍）。
 - `menu.type` 直接给菜单类名（`DialogueBox` / `Chest` / `ShopMenu` / `null`），比 `menu_read` 的渲染文本更结构化。
 - **0.1.1 起 `menu` 还带 `fields`**：菜单内部字段原样摊开（如 `GameMenu` 的 `currentTab` / `hoverText` / `xPositionOnScreen` / `width`），这是驱动**复杂 UI**（商店翻页、博物馆捐赠、制作菜单切标签）的关键 —— 以前只能靠坐标瞎点。
@@ -142,16 +150,21 @@
 | `POST /key {key,count}` | `confirm`/`skip`/`escape`/`menu`/`cancel`/`up`/`down`/`left`/`right`/`w`…（见 A.4） | `press_key` |
 | `POST /tool_area {operation,x1,y1,x2,y2}` | 矩形批量锄/浇 | `till` / `water` |
 
-### A.3.1 钓鱼 / 小游戏（JunimoBridge 0.2.0 + MCP 3.3.0）
+### A.3.1 钓鱼 / 小游戏（JunimoBridge 0.3.2 + MCP 3.3.1）
 
-新增 4 个工具：`fishing`（状态 + `radius` 找钓点）、`cast`（蓄力抛竿）、
+4 个工具：`fishing`（状态 + `radius` 找钓点）、`cast`（蓄力抛竿）、
 `fish`（全自动一条）、`minigame`（`read`/`key`/`quit`）。
 
 - **等咬钩要有耐心**：`timeUntilFishingBite` 真机测到 22 秒（0 级竿、无鱼饵）。
   `fish` 默认预算 60s，别给太短。
-- **打赢小游戏 ≠ 鱼进背包**：进度打满后还有收线动画才发物品，这段动画在自动化下会
-  卡住。**与窗口焦点无关**（前台 / 失焦 / 最小化都复现过）。回执分开报
-  `won` / `delivered`，`ok` 只认物品真的多出来。别把 `progressPeak=1` 当成"钓到了"。
+- **回执分三层，只认 `delivered`**：`won`=打赢钓鱼小游戏，
+  `delivered`=物品真的多出来，`directCatch`=垃圾类走直接发放（不进小游戏）。
+  `progressPeak=1` 只是进度，不是成果。
+- **收线交付与连续钓已修**（0.3.1 / 0.3.2）：早期版本曾卡在收线动画、
+  以及 `reelOnce` 里 `forceCanMove()` 打断 casting 动画锁导致第二竿空转，
+  现在连续调用每竿都能正常走完。都**与窗口焦点无关**。
+- **产出垃圾是游戏特性**（农场池塘 `getFish` 本来如此），不是工具故障，不用排查；
+  换钓点 / 加鱼饵可改善。偶尔空竿直接重试即可。
 - **`minigame key` 用字面键名**（`space`/`left`/`enter`…）：小游戏不读 `options`
   绑定，`IMinigame.receiveKeyPress` 是硬编码的。
 - 测试档没有鱼竿时用 `POST /debug/give {"id":"(T)BambooPole","count":1}` 塞一根

@@ -18,7 +18,7 @@ const ctx = {
   tools: { register: tool => registered.push(tool) },
   systemPrompt: { section: segment => sections.push(segment) },
   // 仿 dsh 的按需注入：服务不在就整个跳过回调。headless / tui profile 没有
-  // webServer，插件必须照样激活（37 个工具 + 提示词一条不能少）。
+  // webServer，插件必须照样激活（41 个工具 + 提示词一条不能少）。
   inject: (names, callback) => {
     if (names.every(name => ctx[name] !== undefined)) callback(ctx)
   },
