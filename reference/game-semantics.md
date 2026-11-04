@@ -149,13 +149,21 @@
 
 - **等咬钩要有耐心**：`timeUntilFishingBite` 真机测到 22 秒（0 级竿、无鱼饵）。
   `fish` 默认预算 60s，别给太短。
-- **打赢小游戏 ≠ 鱼进背包**：进度打满后还有收线动画才发物品，无焦点自动化下这段
-  动画会卡住。回执分开报 `won` / `delivered`，`ok` 只认物品真的多出来。
-  别把 `progressPeak=1` 当成"钓到了"。
+- **打赢小游戏 ≠ 鱼进背包**：进度打满后还有收线动画才发物品，这段动画在自动化下会
+  卡住。**与窗口焦点无关**（前台 / 失焦 / 最小化都复现过）。回执分开报
+  `won` / `delivered`，`ok` 只认物品真的多出来。别把 `progressPeak=1` 当成"钓到了"。
 - **`minigame key` 用字面键名**（`space`/`left`/`enter`…）：小游戏不读 `options`
   绑定，`IMinigame.receiveKeyPress` 是硬编码的。
 - 测试档没有鱼竿时用 `POST /debug/give {"id":"(T)BambooPole","count":1}` 塞一根
   （调试端点，不是正常玩法）；找水用 `GET /water?radius=N`。
+
+### A.3.2 后台操控（JunimoBridge 0.3.0 起）
+
+窗口**最小化之后照样能完整操控**，不用再 `focus`。mod 每帧把
+`GameRunner.instance.Platform._isActive` 按回 true —— 这是 `Game.get_IsActive()`
+最终读的私有字段；给小 getter 打 Harmony 会被 JIT 内联绕过，改字段才一刀到位。
+默认开，`POST /background {"enabled":false}` 可关，`GET /debug/focus` 看现状。
+注意开启后最小化时游戏时间照常流逝，挂机前记得 `sleep` 落盘。
 
 ### A.4 0.1.1 之后的两条硬规矩（排查先看这里）
 
