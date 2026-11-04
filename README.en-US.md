@@ -4,6 +4,8 @@
 
 A DeepSeek Harness plugin that gives *Stardew Valley* 41 control tools, plus the deployment checks and game lifecycle management the MCP layer cannot reach.
 
+> Development and maintenance conventions for AI agents live in [AGENTS.md](AGENTS.md).
+
 ## Overview
 
 This repository is a **dsh bundle**. It operates at the profile layer of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
@@ -19,7 +21,7 @@ The plugin itself has four responsibilities:
 
 Item 3 cannot be done by MCP tools — the mod runs inside the game process, so it can neither start its own process nor raise its own window. Item 4 is implemented as one host route plus a prebuilt client bundle; see “[Season calendar panel](#season-calendar-panel)”.
 
-`junimo-mcp.exe` is bundled (`bin/`, v3.2.2, 6 MB). Installing the plugin is enough; no separate binary download.
+`junimo-mcp.exe` is bundled (`bin/`, v3.3.1, 6 MB). Installing the plugin is enough; no separate binary download.
 
 ## Architecture
 
@@ -48,7 +50,7 @@ model ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-m
 | Game | Stardew Valley 1.6.x |
 | SMAPI | 4.x (`junimo_game_launch` uses it to start the game) |
 | POSIX shell | bash from Git for Windows or WSL, used to launch the game. If absent it falls back to `cmd`: the game still starts, but an extra SMAPI console window appears |
-| Executor mod | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.1.0**, installed into `Mods/JunimoBridge/` (port 7850); [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix) also works (`Mods/NagiBridge/`, 7842) |
+| Executor mod | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.3.2**, installed into `Mods/JunimoBridge/` (port 7850); [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix) also works (`Mods/NagiBridge/`, 7842) |
 
 SMAPI and mod installation steps are in [Junimo-MCP's AGENTS.md](https://github.com/mlkgrnt/Junimo-MCP/blob/main/AGENTS.md).
 
@@ -173,7 +175,7 @@ The client bundle is declared by the `dsh.client` field in `package.json` (`plat
 
 ```bash
 node scripts/sync-binary.mjs          # take the latest Junimo-MCP release
-node scripts/sync-binary.mjs v3.2.2   # or pin a specific tag
+node scripts/sync-binary.mjs v3.3.1   # or pin a specific tag
 ```
 
 The script downloads the executable and the official SHA-256, verifies them locally, and only then overwrites `bin/`, updating `bin/BUNDLED_VERSION` at the same time. Afterwards you need `git add bin/` and a commit.
@@ -231,7 +233,7 @@ The plugin currently **runs on Windows only**, but the reasons are spread across
 |---|---|---|
 | OCaml kernel (what `junimo-mcp.exe` contains) | **Cross-platform, with macOS / Linux artifacts published** | Dependencies are only `yojson` + `unix`, and the source has no platform branches; CI passes every game-free assertion on Linux / macOS / Windows runners; each artifact is re-tested on its own platform before release |
 | This plugin (process launch, window focus, path probing) | **Windows only** | Focus uses user32, launching goes through PowerShell and bash, Steam libraries are probed by drive letter |
-| Executor mod (JunimoBridge / NagiBridge-Remix) | **Partly Windows only** | `/press_key` and `/click_tile` use `keybd_event` / `mouse_event`; `/click` uses in-process calls when a menu is open or `no_mouse` is set, and is itself portable |
+| Executor mod | **Partly Windows only** | **JunimoBridge** injects input in-process via an `InputState.UpdateStates` patch (portable); Win32 is used only for `/focus` and foreground checks. **NagiBridge-Remix** is the one whose `/press_key` / `/click_tile` use `keybd_event` / `mouse_event`; its `/click` uses in-process calls when a menu is open or `no_mouse` is set |
 
 The plugin bundles only the Windows `junimo-mcp.exe`. macOS and Linux users can fetch the matching artifact from [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) and point `JUNIMO_MCP_BIN` at it, which is enough for most of the 41 tools. On non-Windows platforms `junimo_doctor` prints the download URL for that platform rather than a vague "executable not found".
 

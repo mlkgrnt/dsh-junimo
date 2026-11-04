@@ -4,6 +4,8 @@
 
 DeepSeek Harness 插件，为《星露谷物语》提供 41 个操控工具，并补充 MCP 层无法覆盖的部署自检与游戏生命周期管理。
 
+> 开发与维护约定（给 AI Agent）见 [AGENTS.md](AGENTS.md)。
+
 ## 概述
 
 本仓库是一个 **dsh 组合包（bundle）**，作用于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 profile 层。
@@ -19,7 +21,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 41 个操控工具，�
 
 第 3 项无法由 MCP 工具实现——mod 运行于游戏进程内部，不能启动自身进程，也不能将自身窗口置前。第 4 项由一条宿主路由加一份预构建的客户端 bundle 实现，见「[季历面板](#季历面板)」。
 
-`junimo-mcp.exe` 已随包内置（`bin/`，v3.2.2，6 MB），安装插件后无需另行获取二进制。
+`junimo-mcp.exe` 已随包内置（`bin/`，v3.3.1，6 MB），安装插件后无需另行获取二进制。
 
 ## 架构
 
@@ -48,7 +50,7 @@ DeepSeek Harness 插件，为《星露谷物语》提供 41 个操控工具，�
 | 游戏 | Stardew Valley 1.6.x |
 | SMAPI | 4.x（`junimo_game_launch` 依赖它启动） |
 | POSIX shell | Git for Windows 或 WSL 的 bash，用于启动游戏。缺失时退回 `cmd`，可正常启动，但会多出一个 SMAPI 控制台窗口 |
-| 执行器 mod | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.1.0**，安装至 `Mods/JunimoBridge/`（端口 7850）；也兼容 [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix)（`Mods/NagiBridge/`，7842） |
+| 执行器 mod | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.3.2**，安装至 `Mods/JunimoBridge/`（端口 7850）；也兼容 [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix)（`Mods/NagiBridge/`，7842） |
 
 SMAPI 与 mod 的安装步骤见 [Junimo-MCP 的 AGENTS.md](https://github.com/mlkgrnt/Junimo-MCP/blob/main/AGENTS.md)。
 
@@ -184,7 +186,7 @@ profile 的 `cordis.patch.yml` 按 `id` 覆盖插件行。patch 会整体替换 
 
 ```bash
 node scripts/sync-binary.mjs          # 取 Junimo-MCP 的最新 release
-node scripts/sync-binary.mjs v3.2.2   # 或锁定指定 tag
+node scripts/sync-binary.mjs v3.3.1   # 或锁定指定 tag
 ```
 
 脚本下载 exe 与官方 SHA-256，本地校验通过后才覆盖 `bin/`，并同步更新 `bin/BUNDLED_VERSION`。完成后需 `git add bin/` 并提交。
@@ -242,7 +244,7 @@ dsh --profile <name> --no-open                          # 启动；出现 "entri
 |---|---|---|
 | OCaml 内核（`junimo-mcp.exe` 的内容） | **已跨平台，且已发布 macOS / Linux 产物** | 依赖只有 `yojson` + `unix`，源码无平台分支；CI 在 Linux / macOS / Windows 三个 runner 上跑通全部免游戏断言；产物发布前会在各自平台上再跑一遍 |
 | 本插件（进程启动、窗口聚焦、路径探测） | **仅 Windows** | 聚焦用 user32，启动走 PowerShell 与 bash，Steam 库按盘符探测 |
-| 执行器 mod（JunimoBridge / NagiBridge-Remix） | **部分仅 Windows** | `/press_key` 与 `/click_tile` 走 `keybd_event` / `mouse_event`；`/click` 在有菜单或带 `no_mouse` 时走进程内调用，本身可移植 |
+| 执行器 mod | **部分仅 Windows** | **JunimoBridge** 的虚拟输入走进程内 `InputState.UpdateStates` 补丁（本身可移植），Win32 只用于 `/focus` 置前与前台判据；**NagiBridge-Remix** 的 `/press_key` / `/click_tile` 才走 `keybd_event` / `mouse_event`，`/click` 在有菜单或带 `no_mouse` 时走进程内调用 |
 
 本插件随包只带 Windows 的 `junimo-mcp.exe`。macOS / Linux 用户可以从 [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) 取对应产物（`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`），用 `JUNIMO_MCP_BIN` 指过来即可使用 41 个工具中的大部分；`junimo_doctor` 在非 Windows 上会直接给出该平台对应的下载地址，而不是笼统地报「找不到 exe」。
 

@@ -19,6 +19,11 @@ README 新增「模型怎么查工具」把分工写清楚了。
 - 数据流 `NagiBridge mod` → `JunimoBridge mod（7850）`（默认执行器早换了）。
 - 附录 A.3.1 更新：收线交付（0.3.1）与连续钓（0.3.2）都已修；**产出垃圾是游戏特性，不用排查**。
 - 四语 README 的 `junimo_focus` 说明同步。
+- **补建 `AGENTS.md`**（开发 / 维护约定：三层装配、五条铁律、版本同步点、测试与发版），
+  四语 README 顶部加指针，`package.json` 的 `files` 一并收录。
+- 四语 README 的版本残留订正：内置 exe `v3.2.2` → **v3.3.1**、执行器
+  `JunimoBridge v0.1.0` → **v0.3.2**、`sync-binary.mjs` 示例 tag 同步；
+  「平台支持」区分清楚 JunimoBridge 的进程内 Harmony 输入与 NagiBridge 的 Win32 输入。
 
 ## [0.3.2] - 2026-11-04
 

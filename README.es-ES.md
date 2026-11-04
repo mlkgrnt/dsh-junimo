@@ -4,6 +4,8 @@
 
 Un plugin de DeepSeek Harness que aporta 41 herramientas de control a *Stardew Valley*, además de las comprobaciones de despliegue y la gestión del ciclo de vida del juego que la capa MCP no puede alcanzar.
 
+> Las convenciones de desarrollo y mantenimiento para agentes de IA están en [AGENTS.md](AGENTS.md).
+
 ## Descripción general
 
 Este repositorio es un **bundle de dsh**. Actúa en la capa de profile de [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
@@ -19,7 +21,7 @@ El plugin asume cuatro responsabilidades:
 
 El punto 3 no puede hacerlo ninguna herramienta MCP: el mod se ejecuta dentro del proceso del juego, así que no puede iniciar su propio proceso ni traer su propia ventana al frente. El punto 4 se implementa con una ruta en el host más un bundle de cliente ya compilado; ver «[Panel del calendario de estación](#panel-del-calendario-de-estación)».
 
-`junimo-mcp.exe` va incluido (`bin/`, v3.2.2, 6 MB). Basta con instalar el plugin; no hay que descargar ningún binario aparte.
+`junimo-mcp.exe` va incluido (`bin/`, v3.3.1, 6 MB). Basta con instalar el plugin; no hay que descargar ningún binario aparte.
 
 ## Arquitectura
 
@@ -48,7 +50,7 @@ modelo ──mcp__junimo__*──▶ dsh-mcp-client ──stdio──▶ junimo-
 | Juego | Stardew Valley 1.6.x |
 | SMAPI | 4.x (`junimo_game_launch` lo usa para iniciar el juego) |
 | Shell POSIX | bash de Git for Windows o WSL, usado para lanzar el juego. Si falta, se recurre a `cmd`: el juego arranca igual, pero aparece una ventana de consola de SMAPI adicional |
-| Mod ejecutor | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.1.0**, instalado en `Mods/JunimoBridge/` (puerto 7850); [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix) también sirve (`Mods/NagiBridge/`, 7842) |
+| Mod ejecutor | [JunimoBridge](https://github.com/mlkgrnt/junimo-bridge) **v0.3.2**, instalado en `Mods/JunimoBridge/` (puerto 7850); [NagiBridge-Remix](https://github.com/pendel001/NagiBridge-Remix) también sirve (`Mods/NagiBridge/`, 7842) |
 
 Los pasos de instalación de SMAPI y del mod están en el [AGENTS.md de Junimo-MCP](https://github.com/mlkgrnt/Junimo-MCP/blob/main/AGENTS.md).
 
@@ -173,7 +175,7 @@ El bundle de cliente se declara con el campo `dsh.client` de `package.json` (`pl
 
 ```bash
 node scripts/sync-binary.mjs          # toma la última release de Junimo-MCP
-node scripts/sync-binary.mjs v3.2.2   # o fija un tag concreto
+node scripts/sync-binary.mjs v3.3.1   # o fija un tag concreto
 ```
 
 El script descarga el ejecutable y el SHA-256 oficial, los verifica localmente y solo entonces sobrescribe `bin/`, actualizando a la vez `bin/BUNDLED_VERSION`. Después hay que hacer `git add bin/` y commit.
@@ -231,7 +233,7 @@ El plugin hoy **solo funciona en Windows**, pero las razones se reparten en tres
 |---|---|---|
 | Núcleo OCaml (lo que contiene `junimo-mcp.exe`) | **Multiplataforma, con artefactos publicados para macOS / Linux** | Sus dependencias son solo `yojson` + `unix` y el código no tiene ramas por plataforma; CI supera todas las aserciones sin juego en runners Linux / macOS / Windows; cada artefacto se vuelve a probar en su plataforma antes de publicarse |
 | Este plugin (lanzamiento de procesos, foco de ventana, sondeo de rutas) | **Solo Windows** | El foco usa user32, el lanzamiento pasa por PowerShell y bash, y las bibliotecas de Steam se buscan por letra de unidad |
-| Mod ejecutor (JunimoBridge / NagiBridge-Remix) | **Parcialmente solo Windows** | `/press_key` y `/click_tile` usan `keybd_event` / `mouse_event`; `/click` usa llamadas en proceso cuando hay un menú abierto o se pasa `no_mouse`, y de por sí es portable |
+| Mod ejecutor | **Parcialmente solo Windows** | **JunimoBridge** inyecta la entrada dentro del proceso mediante un parche a `InputState.UpdateStates` (portable); Win32 solo se usa en `/focus` y para detectar el primer plano. **NagiBridge-Remix** es quien usa `keybd_event` / `mouse_event` en `/press_key` y `/click_tile`; su `/click` usa llamadas en proceso con menú abierto o `no_mouse` |
 
 El plugin incluye solo el `junimo-mcp.exe` de Windows. Quien use macOS o Linux puede bajar el artefacto correspondiente de [Junimo-MCP Releases](https://github.com/mlkgrnt/Junimo-MCP/releases/latest) (`junimo-mcp-macos-arm64` / `junimo-mcp-linux-x86_64`) y apuntar `JUNIMO_MCP_BIN` hacia él: eso cubre la mayoría de las 41 herramientas. En sistemas que no son Windows, `junimo_doctor` muestra la URL de descarga de esa plataforma en lugar de un vago «no se encuentra el ejecutable».
 
