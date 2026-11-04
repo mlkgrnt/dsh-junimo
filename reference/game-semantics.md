@@ -142,6 +142,21 @@
 | `POST /key {key,count}` | `confirm`/`skip`/`escape`/`menu`/`cancel`/`up`/`down`/`left`/`right`/`w`…（见 A.4） | `press_key` |
 | `POST /tool_area {operation,x1,y1,x2,y2}` | 矩形批量锄/浇 | `till` / `water` |
 
+### A.3.1 钓鱼 / 小游戏（JunimoBridge 0.2.0 + MCP 3.3.0）
+
+新增 4 个工具：`fishing`（状态 + `radius` 找钓点）、`cast`（蓄力抛竿）、
+`fish`（全自动一条）、`minigame`（`read`/`key`/`quit`）。
+
+- **等咬钩要有耐心**：`timeUntilFishingBite` 真机测到 22 秒（0 级竿、无鱼饵）。
+  `fish` 默认预算 60s，别给太短。
+- **打赢小游戏 ≠ 鱼进背包**：进度打满后还有收线动画才发物品，无焦点自动化下这段
+  动画会卡住。回执分开报 `won` / `delivered`，`ok` 只认物品真的多出来。
+  别把 `progressPeak=1` 当成"钓到了"。
+- **`minigame key` 用字面键名**（`space`/`left`/`enter`…）：小游戏不读 `options`
+  绑定，`IMinigame.receiveKeyPress` 是硬编码的。
+- 测试档没有鱼竿时用 `POST /debug/give {"id":"(T)BambooPole","count":1}` 塞一根
+  （调试端点，不是正常玩法）；找水用 `GET /water?radius=N`。
+
 ### A.4 0.1.1 之后的两条硬规矩（排查先看这里）
 
 - **方向键在 SDV 里没有默认绑定。** `options.moveXButton` 默认只绑 `W`/`A`/`S`/`D`，
