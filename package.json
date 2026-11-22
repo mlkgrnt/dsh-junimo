@@ -38,6 +38,16 @@
     "type": "git",
     "url": "git+https://github.com/mlkgrnt/dsh-junimo.git"
   },
+  "homepage": "https://github.com/mlkgrnt/dsh-junimo#readme",
+  "bugs": {
+    "url": "https://github.com/mlkgrnt/dsh-junimo/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "dsh": {
     "engines": {
       "dsh": ">=0.2.1-rc.2"
@@ -55,6 +65,7 @@
     }
   },
   "scripts": {
+    "prepublishOnly": "node scripts/prepublish.mjs",
     "smoke": "node test/smoke.mjs",
     "client": "node test/client-bundle.mjs",
     "panel": "node test/panel-dto.mjs"

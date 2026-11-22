@@ -95,4 +95,22 @@ node scripts/sync-binary.mjs v3.3.1     # 或锁定指定 tag
 - 版本号与四语 README、CHANGELOG、内置 exe 版本是四个独立同步点，别只改一处。
 - 引用执行器版本时写实际版本（当前 JunimoBridge **0.3.2**、Junimo-MCP **3.3.1**）。
 - 文档里「平台支持」要区分清楚：JunimoBridge 的虚拟输入是进程内 Harmony 补丁（可移植），
+### 发布到 npm
+
+包名 `dsh-junimo`（2026-11 确认未被占用）。只有**这个包**发 npm ——
+Junimo-MCP 是 OCaml 单 exe（要用就得造一层二进制分发壳），JunimoBridge 是 SMAPI mod（该走 Nexus / Thunderstore），两者都不适合 npm。
+
+```bash
+node scripts/sync-binary.mjs v3.3.1    # 1. 先同步内置 exe（版本要一起提）
+# 2. 改 package.json 版本 + CHANGELOG + 四语 README 里的版本号
+npm publish                            # 3. 发布（prepublishOnly 会守门）
+```
+
+- **守门脚本** `scripts/prepublish.mjs`（`prepublishOnly` 自动跑）：校验 exe 的 SHA-256 与 `bin/junimo-mcp.exe.sha256` 一致、
+  `BUNDLED_VERSION` 形状、必需文件齐全、`files` 白名单覆盖到、`publishConfig.registry` 指向 npmjs，并在 Windows 上跑一遍 smoke。
+  任何一项不过就中止 —— **npm 版本发出去不能撤回**，这道门比事后道歉便宜。
+- **本机默认 registry 是 npmmirror**，所以 `package.json` 里钉了 `publishConfig.registry`，`npm publish` 不会被镜像源劫走；
+  但 `npm login` 要显式指定 `--registry https://registry.npmjs.org`，否则 token 记在镜像名下、发布时仍报 ENEEDAUTH。
+- 发布后记得把四语 README 的安装说明改成 `dsh plugin add dsh-junimo`（github 那条留作兜底）。
+
   Win32 只用于 `/focus`；`keybd_event` / `mouse_event` 是 NagiBridge-Remix 的实现。
