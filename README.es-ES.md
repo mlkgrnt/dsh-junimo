@@ -62,10 +62,11 @@ Los pasos de instalación de SMAPI y del mod están en el [AGENTS.md de Junimo-M
 # checkout local
 dsh plugin --profile web add link:/path/to/dsh-junimo
 
-# o directamente desde GitHub (ESM puro, sin paso de compilación)
-dsh plugin --profile web add github:mlkgrnt/dsh-junimo
+# o desde npm (recomendado: versiones inmutables)
+dsh plugin --profile web add dsh-junimo
 ```
 
+> También puedes instalarlo desde GitHub (sigue `main`): `dsh plugin --profile web add github:mlkgrnt/dsh-junimo`. Instalar desde npm te da **versiones inmutables**: `pnpm install` nunca te devuelve a un commit antiguo.
 `dsh plugin add` inicializa el profile y añade este paquete a `dsh.profile.bundles`. Surte efecto tras reiniciar dsh.
 
 Tras instalar, ejecuta `junimo_doctor` para comprobar toda la cadena. Informa la ruta y la versión del ejecutable, el estado del puerto 7850, la respuesta del mod, la disponibilidad de la partida, la integridad de los archivos de SMAPI y del mod ejecutor, y las líneas de error del log de SMAPI.

@@ -111,6 +111,10 @@ npm publish                            # 3. 发布（prepublishOnly 会守门）
   任何一项不过就中止 —— **npm 版本发出去不能撤回**，这道门比事后道歉便宜。
 - **本机默认 registry 是 npmmirror**，所以 `package.json` 里钉了 `publishConfig.registry`，`npm publish` 不会被镜像源劫走；
   但 `npm login` 要显式指定 `--registry https://registry.npmjs.org`，否则 token 记在镜像名下、发布时仍报 ENEEDAUTH。
+- ⚠️ **发布必须用带 2FA bypass 的 granular token**：账号开了 2FA 时，普通 token 会 403（"granular access token with bypass 2fa enabled is required"），
+  交互式 2FA 在无人值守的自动化里根本发不动。在 npmjs.com 建 token 时勾上 **Bypass two-factor authentication**。
+- 首次发布会先落下 `0.0.0-stage` 的占位版、几秒后才把 `latest` 指到真版本；期间 `npm view <pkg> version` 可能读到占位值，别当成失败。
+- 包页面：https://www.npmjs.com/package/dsh-junimo
 - 发布后记得把四语 README 的安装说明改成 `dsh plugin add dsh-junimo`（github 那条留作兜底）。
 
   Win32 只用于 `/focus`；`keybd_event` / `mouse_event` 是 NagiBridge-Remix 的实现。

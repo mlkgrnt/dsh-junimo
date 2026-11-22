@@ -62,10 +62,11 @@ SMAPI 与 mod 的安装步骤见 [Junimo-MCP 的 AGENTS.md](https://github.com/m
 # 本地 checkout
 dsh plugin --profile web add link:/path/to/dsh-junimo
 
-# 或直接从 GitHub 安装（纯 ESM 源码，无构建步骤）
-dsh plugin --profile web add github:mlkgrnt/dsh-junimo
+# 或从 npm 安装（推荐：版本不可变）
+dsh plugin --profile web add dsh-junimo
 ```
 
+> 也可以从 GitHub 装（跟 main 分支）：`dsh plugin --profile web add github:mlkgrnt/dsh-junimo`。npm 装的好处是**版本不可变**，不会被 `pnpm install` 还原成旧提交。
 `dsh plugin add` 会初始化 profile，并将本包追加至 `dsh.profile.bundles`。重启 dsh 后生效。
 
 安装后执行 `junimo_doctor` 完成链路检查。该工具输出 exe 路径与版本、7850 端口状态、mod 响应、存档就绪状态、SMAPI 与执行器 mod 文件完整性，以及 SMAPI 日志中的错误行。

@@ -2,7 +2,20 @@
 
 体例参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号跟 `package.json` 走。
 
+## [0.4.3] - 2026-11-22
+
+### 新增
+- **发布到 npm**：`dsh plugin --profile web add dsh-junimo` 即可安装（GitHub 安装作为兜底保留）。
+  npm 版的好处是**版本不可变** —— 不会再出现"装/卸别的插件时被 `pnpm install` 还原成旧 commit、季历面板莫名消失"那类问题。
+
+### 变更
+- `package.json`：补 `homepage` / `bugs` / `engines` / `publishConfig.registry`（后者必须钉死，本机默认 registry 是镜像源）。
+- 新增 `scripts/prepublish.mjs`（`prepublishOnly`）：发布前校验 exe 的 SHA-256 与 `.sha256` 一致、
+  `BUNDLED_VERSION` 形状、必需文件齐全、`files` 白名单覆盖、registry 指向 npmjs，并跑一遍 smoke。
+- 四语 README 的安装说明改为 npm 优先。
+
 ## [0.4.2] - 2026-11-05
+
 
 ### 文档维护：工具速查表对齐 v3.3.1 / JunimoBridge 0.3.2
 
