@@ -114,6 +114,9 @@ npm publish                            # 3. 发布（prepublishOnly 会守门）
 - ⚠️ **发布必须用带 2FA bypass 的 granular token**：账号开了 2FA 时，普通 token 会 403（"granular access token with bypass 2fa enabled is required"），
   交互式 2FA 在无人值守的自动化里根本发不动。在 npmjs.com 建 token 时勾上 **Bypass two-factor authentication**。
 - 首次发布会先落下 `0.0.0-stage` 的占位版、几秒后才把 `latest` 指到真版本；期间 `npm view <pkg> version` 可能读到占位值，别当成失败。
+- ⚠️ **国内机器装新版的两个坑**：①`pnpm-lock.yaml` 会钉住已装版本 —— `pnpm install` 和应用内「卸载重装」都不会在 semver 范围内升级，
+  得 `pnpm update dsh-junimo` 才会重新解析；②镜像源（npmmirror）同步新版本有延迟（实测 0.4.3 发布十几分钟后镜像仍是 0.4.2），
+  这时要直连 `pnpm add dsh-junimo@<版本> --registry https://registry.npmjs.org`。`junimo_doctor` 末尾的版本脚注会指明是哪种情况。
 - 包页面：https://www.npmjs.com/package/dsh-junimo
 - 发布后记得把四语 README 的安装说明改成 `dsh plugin add dsh-junimo`（github 那条留作兜底）。
 

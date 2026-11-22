@@ -2,7 +2,17 @@
 
 体例参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号跟 `package.json` 走。
 
+## [0.4.4] - 2026-11-22
+
+### 新增
+- `junimo_doctor` 末尾多一行**版本脚注**：比对 npm 上的 latest 与已装版本，落后就提示更新命令，
+  并且能分辨"是镜像源还没同步"（此时给出 `--registry https://registry.npmjs.org` 的直连命令）。
+
+  起因：0.4.3 发布后，用镜像源的机器「卸载重装」拿到的还是 0.4.2 —— 两个原因叠在一起：
+  pnpm 信任 lock 里的 `0.4.2`，而镜像源那时也还没同步 0.4.3。有这条脚注就不会再猜了。
+
 ## [0.4.3] - 2026-11-22
+
 
 ### 新增
 - **发布到 npm**：`dsh plugin --profile web add dsh-junimo` 即可安装（GitHub 安装作为兜底保留）。

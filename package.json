@@ -1,6 +1,6 @@
 {
   "name": "dsh-junimo",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "DeepSeek Harness 插件：为《星露谷物语》提供 41 个操控工具，并补充部署自检与游戏生命周期管理",
   "type": "module",
   "main": "src/index.js",

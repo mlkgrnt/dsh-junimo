@@ -10,8 +10,59 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { apiGet, probePort, splitApiUrl } from './api.js'
+import { packageRoot } from './paths.js'
 
 const ICON = { ok: '✓', warn: '!', fail: '✗' }
+
+/** 本包自报的版本（读 package.json）。 */
+function installedVersion() {
+  try {
+    return JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')).version
+  } catch {
+    return undefined
+  }
+}
+
+/** 比较 x.y.z；a > b 返回 1，相等 0，a < b 返回 -1。非数字段按 0 处理。 */
+function compareVersion(a, b) {
+  const pa = String(a).split('.').map((n) => Number.parseInt(n, 10) || 0)
+  const pb = String(b).split('.').map((n) => Number.parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (d !== 0) return d > 0 ? 1 : -1
+  }
+  return 0
+}
+
+/**
+ * 查 npm 上的最新版本。**npmjs 优先**（包发布在那边），失败再退回镜像源。
+ *
+ * 为什么要两个源：国内机器默认 registry 常常是 npmmirror，而镜像同步新版本有延迟
+ * ——实测 0.4.3 发布后十几分钟镜像还停在 0.4.2，于是「卸载重装」装回旧版，
+ * 看起来像是安装机制有问题，其实只是镜像还没跟上来。
+ */
+async function latestPublishedVersion() {
+  const sources = [
+    ['npmjs', 'https://registry.npmjs.org/dsh-junimo'],
+    ['镜像', 'https://registry.npmmirror.com/dsh-junimo'],
+  ]
+  const out = {}
+  for (const [name, url] of sources) {
+    try {
+      const res = await fetch(url, {
+        headers: { accept: 'application/vnd.npm.install-v1+json' },
+        signal: AbortSignal.timeout(1800),
+      })
+      if (!res.ok) continue
+      const json = await res.json()
+      const v = json['dist-tags']?.latest
+      if (typeof v === 'string' && v.length > 0) out[name] = v
+    } catch {
+      // 离线 / 超时：这一项就静默跳过，不让诊断因为网络挂掉
+    }
+  }
+  return out
+}
 
 /**
  * 读 SMAPI 最近日志，只挑**真的出错**的行。
@@ -226,5 +277,23 @@ export async function runDoctor(paths) {
     .map(c => `${ICON[c.verdict]} ${c.title}\n   ${c.detail}${c.fix ? `\n   → ${c.fix}` : ''}`)
     .join('\n\n')
 
-  return `${headline}\n\n${body}`
+  // 版本提示：单独一行脚注，**不计入 headline** —— 有新版属于「可以升」，不是「链路坏了」。
+  let versionNote = ''
+  try {
+    const published = await latestPublishedVersion()
+    const installed = installedVersion()
+    const newest = published['npmjs']
+    const mirrored = published['镜像']
+    if (installed && newest && compareVersion(newest, installed) > 0) {
+      const mirrorBehind = mirrored !== undefined && compareVersion(newest, mirrored) > 0
+      const mirrorHint = mirrorBehind ? '；镜像源还停在 ' + mirrored + '，走镜像装不到新版' : ''
+      const extraHint = mirrorBehind ? '（或等镜像同步后 pnpm update dsh-junimo）' : ''
+      versionNote =
+        '\n\nℹ️ npm 上有新版本 ' + newest + '（当前 ' + installed + '）' + mirrorHint +
+        '\n   更新：pnpm add dsh-junimo@' + newest + ' --registry https://registry.npmjs.org' + extraHint
+    }
+  } catch {
+    // 拿不到版本就静默，别让诊断因为网络挂掉
+  }
+  return `${headline}\n\n${body}${versionNote}`
 }
